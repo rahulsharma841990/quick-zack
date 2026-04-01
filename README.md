@@ -7,19 +7,21 @@
 ### Lightning-fast project launcher for developers
 
 **Hit `Alt+Space` anywhere → type a few letters → open your project instantly.**  
-No more hunting through File Explorer. No more slow IDE startup dialogs.
+No more hunting through File Explorer. No more slow IDE startup dialogs.  
+Now available on **Windows** and **macOS**.
 
 <br/>
 
 [![Windows](https://img.shields.io/badge/Windows-10%2F11-blue?style=for-the-badge&logo=windows&logoColor=white)](https://github.com)
+[![macOS](https://img.shields.io/badge/macOS-12%2B-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-28-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
 [![License](https://img.shields.io/badge/License-MIT-8b5cf6?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-34d399?style=for-the-badge)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.1.0-34d399?style=for-the-badge)](https://github.com)
 [![Free](https://img.shields.io/badge/Price-Free-fb923c?style=for-the-badge)](https://github.com)
 
 <br/>
 
-[**⬇️ Download Installer**](#-download) &nbsp;·&nbsp; [**📦 Download Portable**](#-download) &nbsp;·&nbsp; [**📖 Docs**](#-configuration)
+[**🪟 Download for Windows**](#-download) &nbsp;·&nbsp; [**🍎 Download for macOS**](#-download) &nbsp;·&nbsp; [**📖 Docs**](#-configuration)
 
 </div>
 
@@ -49,6 +51,7 @@ Press Alt+Space  →  Type "my-re"  →  Highlights "my-react-app"  →  Press E
 | ⌨️ **Keyboard First**  | `↑↓` navigate, `Enter` open, `Esc` close — no mouse needed |
 | ⚙️ **Simple Config**   | One JSON file to configure everything                      |
 | 🚫 **No Account**      | No login, no cloud, no telemetry. 100% local.              |
+| 🍎 **macOS Support**   | Native Apple Silicon & Intel Mac builds                    |
 
 ---
 
@@ -56,21 +59,27 @@ Press Alt+Space  →  Type "my-re"  →  Highlights "my-react-app"  →  Press E
 
 ### 1. Download & Install
 
-Download the installer or portable `.exe` from the [**Releases**](#-download) section.
+**Windows:** Download the installer or portable `.exe` from the [**Releases**](#-download) section.
+
+**macOS:** Download the `.dmg` for your Mac (Apple Silicon or Intel). Open the `.dmg` and drag QuickZack to Applications.
+
+> **macOS users:** On first launch, right-click the app → **Open** to bypass Gatekeeper.
 
 ### 2. Configure your projects folder
 
-After install, **right-click the tray icon** → **Edit config.json**:
+After install, **right-click the tray/menu bar icon** → **Edit config.json**:
 
 ```json
 {
-  "projects_path": "C:/xampp/htdocs",
+  "projects_path": "~/Projects",
   "editor_command": "code",
   "shortcut": "Alt+Space",
   "max_depth": 1,
   "exclude_folders": [".git", "node_modules", "vendor", ".vs", "__pycache__"]
 }
 ```
+
+> **Tip:** Use `~/Projects` on macOS, `C:/xampp/htdocs` or `C:/Users/you/Projects` on Windows.
 
 ### 3. Launch!
 
@@ -80,12 +89,23 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 ## ⬇️ Download
 
+### Windows
+
 | Package                                                         | Description                                 | Size  |
 | --------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack Setup 1.0.0.exe**](https://github.com/releases)    | Full installer with Start Menu & auto-start | ~80MB |
-| [**QuickZack-Portable-1.0.0.exe**](https://github.com/releases) | No install needed, run anywhere             | ~80MB |
+| [**QuickZack Setup 1.1.0.exe**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack.Setup.1.1.0.exe)    | Full installer with Start Menu & auto-start | ~80MB |
+| [**QuickZack-Portable-1.1.0.exe**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-Portable-1.1.0.exe) | No install needed, run anywhere             | ~80MB |
 
 > **Requirements:** Windows 10 or 11 (64-bit)
+
+### macOS
+
+| Package                                                         | Description                                 | Size  |
+| --------------------------------------------------------------- | ------------------------------------------- | ----- |
+| [**QuickZack-1.1.0-arm64.dmg**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4)                 | ~80MB |
+| [**QuickZack-1.1.0.dmg**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0.dmg) | Intel Mac (x64)                             | ~80MB |
+
+> **Requirements:** macOS 12+ (Monterey or later)
 
 ---
 
@@ -163,6 +183,12 @@ npm run dev
 
 # Build installer for Windows
 npm run build
+
+# Build for macOS (DMG + ZIP, x64 + arm64)
+npm run build:mac
+
+# Build for both platforms
+npm run build:all
 
 # Build without installer (just the folder)
 npm run build:dir

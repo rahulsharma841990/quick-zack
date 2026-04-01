@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('api', {
   // Get config
   getConfig: () => ipcRenderer.invoke('get-config'),
 
+  // Open SSH terminal using sftp.json config
+  openSsh: (sftpConfig, projectName) => ipcRenderer.invoke('open-ssh', sftpConfig, projectName),
+
   // Hide the window
   hideWindow: () => ipcRenderer.send('hide-window'),
 

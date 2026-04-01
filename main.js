@@ -11,7 +11,11 @@ const {
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
+const { Client: SshClient } = require('ssh2');
+
+// Active SSH sessions: webContents.id → ssh2 Shell stream
+const sshSessions = new Map();
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -77,12 +81,36 @@ async function scanProjects() {
 
       const projects = entries
         .filter((entry) => entry.isDirectory() && !excluded.has(entry.name))
-        .map((entry) => ({
-          name: entry.name,
-          path: path.join(projectsPath, entry.name).replace(/\\/g, '/'),
-          // detect common project types for icon hints
-          type: detectProjectType(path.join(projectsPath, entry.name))
-        }));
+        .map((entry) => {
+          const fullPath = path.join(projectsPath, entry.name);
+          // Check .vscode/sftp.json first (VS Code SFTP extension), then root sftp.json
+          const sftpCandidates = [
+            path.join(fullPath, '.vscode', 'sftp.json'),
+            path.join(fullPath, 'sftp.json')
+          ];
+          let hasSftp = false;
+          let sftpConfig = null;
+          for (const candidate of sftpCandidates) {
+            try {
+              if (fs.existsSync(candidate)) {
+                hasSftp = true;
+                sftpConfig = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+                console.log(`[QuickZack] SFTP found: ${candidate}`);
+                break;
+              }
+            } catch (e) {
+              console.warn(`[QuickZack] Could not read ${candidate}:`, e.message);
+            }
+          }
+          return {
+            name: entry.name,
+            path: fullPath.replace(/\\/g, '/'),
+            // detect common project types for icon hints
+            type: detectProjectType(fullPath),
+            hasSftp,
+            sftpConfig
+          };
+        });
 
       console.log(`[QuickZack] Found ${projects.length} projects in "${projectsPath}"`);
       resolve(projects);
@@ -293,6 +321,131 @@ ipcMain.handle('open-project', async (_event, projectPath) => {
 
 ipcMain.on('hide-window', () => {
   hideWindow();
+});
+
+// ─── SSH Terminal Window ─────────────────────────────────────────────────────
+
+function createSshTerminal(sftpConfig, projectName) {
+  const host     = sftpConfig.host || '';
+  const port     = sftpConfig.port || 22;
+  const user     = sftpConfig.username || sftpConfig.user || 'root';
+  const password = sftpConfig.password || '';
+
+  const displayName = projectName || `${user}@${host}`;
+  const windowTitle = `⚡ ${displayName} — QuickZack`;
+
+  const termWin = new BrowserWindow({
+    width: 920,
+    height: 580,
+    minWidth: 600,
+    minHeight: 380,
+    title: windowTitle,
+    backgroundColor: '#0d1117',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-terminal.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  });
+
+  // Remove File / Edit / View / Window / Help menu bar
+  termWin.setMenu(null);
+
+  termWin.loadFile('terminal.html');
+
+  const conn = new SshClient();
+
+  termWin.webContents.on('did-finish-load', () => {
+    // Ensure title stays (HTML title tag would override it otherwise)
+    termWin.setTitle(windowTitle);
+
+    conn
+      .on('ready', () => {
+        termWin.webContents.send('ssh-connected', {
+          label:       `${user}@${host}:${port}`,
+          projectName: displayName
+        });
+
+        conn.shell(
+          { term: 'xterm-256color', cols: 220, rows: 50 },
+          (err, stream) => {
+            if (err) {
+              try { termWin.webContents.send('ssh-error', err.message); } catch {}
+              return;
+            }
+
+            // Store stream keyed by pre-captured wcId
+            sshSessions.set(wcId, stream);
+
+            // SSH → renderer  (guard with try/catch — window may close any time)
+            stream.on('data', (data) => {
+              try { termWin.webContents.send('ssh-data', data.toString('utf8')); } catch {}
+            });
+
+            stream.stderr.on('data', (data) => {
+              try { termWin.webContents.send('ssh-data', data.toString('utf8')); } catch {}
+            });
+
+            stream.on('close', () => {
+              try { termWin.webContents.send('ssh-closed'); } catch {}
+              sshSessions.delete(wcId);
+              try { conn.end(); } catch {}
+            });
+          }
+        );
+      })
+      .on('error', (err) => {
+        console.error('[QuickZack] SSH error:', err.message);
+        try { termWin.webContents.send('ssh-error', err.message); } catch {}
+      })
+      .connect({
+        host,
+        port,
+        username: user,
+        password,
+        // Accept any host key (same as StrictHostKeyChecking=no)
+        hostVerifier: () => true,
+        readyTimeout: 20000,
+      });
+  });
+
+  // Capture id NOW while webContents is still alive
+  const wcId = termWin.webContents.id;
+
+  termWin.on('closed', () => {
+    const stream = sshSessions.get(wcId);
+    if (stream) {
+      try { stream.close(); } catch {}
+      sshSessions.delete(wcId);
+    }
+    try { conn.end(); } catch {}
+  });
+
+  return termWin;
+}
+
+// Renderer → SSH: keyboard input
+ipcMain.on('ssh-input', (event, data) => {
+  const stream = sshSessions.get(event.sender.id);
+  if (stream) stream.write(data);
+});
+
+// Renderer → SSH: terminal resize
+ipcMain.on('ssh-resize', (event, cols, rows) => {
+  const stream = sshSessions.get(event.sender.id);
+  if (stream) stream.setWindow(rows, cols, 0, 0);
+});
+
+ipcMain.handle('open-ssh', async (_event, sftpConfig, projectName) => {
+  try {
+    createSshTerminal(sftpConfig, projectName || '');
+    hideWindow();
+    return { success: true };
+  } catch (err) {
+    console.error('[QuickZack] open-ssh error:', err.message);
+    return { success: false, error: err.message };
+  }
 });
 
 // ─── App Lifecycle ───────────────────────────────────────────────────────────

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSH Terminal – QuickZack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d1117;
+      --header-bg:   rgba(255,255,255,0.035);
+      --border:      rgba(255,255,255,0.08);
+      --teal:        #2dd4bf;
+      --teal-dim:    rgba(45,212,191,0.15);
+      --red:         #f87171;
+      --green:       #34d399;
+      --text:        #e6edf3;
+      --muted:       #6e7681;
+      --accent:      #8b5cf6;
+      --font:        'Inter', -apple-system, sans-serif;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 38px;
+      padding: 0 16px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    #status-dot {
+      flex-shrink: 0;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    #status-dot.connecting { background: #fbbf24; animation: pulse 1.2s infinite; }
+    #status-dot.connected  { background: var(--green); box-shadow: 0 0 7px rgba(52,211,153,0.6); }
+    #status-dot.error      { background: var(--red);   box-shadow: 0 0 7px rgba(248,113,113,0.5); }
+    #status-dot.closed     { background: var(--muted); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+
+    #conn-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--teal);
+      letter-spacing: 0.02em;
+    }
+
+    #conn-status {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    #brand {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.5;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* ── Terminal container ───────────────────────────────────────── */
+    #terminal-wrap {
+      width: 100%;
+      height: calc(100% - 38px);
+      padding: 4px 6px 4px 8px;
+    }
+
+    #terminal-wrap .xterm {
+      height: 100%;
+    }
+
+    /* Scrollbar */
+    .xterm-viewport::-webkit-scrollbar { width: 6px; }
+    .xterm-viewport::-webkit-scrollbar-thumb {
+      background: rgba(139,92,246,0.35);
+      border-radius: 99px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <div id="status-dot" class="connecting"></div>
+    <span id="conn-label">Connecting…</span>
+    <span id="conn-status"></span>
+    <div id="brand">⚡ QuickZack SSH</div>
+  </div>
+
+  <div id="terminal-wrap">
+    <div id="terminal" style="height:100%;"></div>
+  </div>
+
+<script>
+// ── xterm setup ───────────────────────────────────────────────────────────
+const terminal = new Terminal({
+  theme: {
+    background:          '#0d1117',
+    foreground:          '#e6edf3',
+    cursor:              '#58a6ff',
+    cursorAccent:        '#0d1117',
+    selectionBackground: 'rgba(88,166,255,0.25)',
+    black:    '#484f58', brightBlack:   '#6e7681',
+    red:      '#ff7b72', brightRed:     '#ffa198',
+    green:    '#3fb950', brightGreen:   '#56d364',
+    yellow:   '#d29922', brightYellow:  '#e3b341',
+    blue:     '#58a6ff', brightBlue:    '#79c0ff',
+    magenta:  '#bc8cff', brightMagenta: '#d2a8ff',
+    cyan:     '#39c5cf', brightCyan:    '#56d4dd',
+    white:    '#b1bac4', brightWhite:   '#f0f6fc',
+  },
+  fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace',
+  fontSize: 13,
+  lineHeight: 1.45,
+  cursorBlink: true,
+  cursorStyle: 'bar',
+  allowTransparency: true,
+  scrollback: 5000,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+terminal.loadAddon(fitAddon);
+terminal.open(document.getElementById('terminal'));
+fitAddon.fit();
+
+// ── Resize observer ───────────────────────────────────────────────────────
+const ro = new ResizeObserver(() => {
+  try {
+    fitAddon.fit();
+    window.sshBridge.resize(terminal.cols, terminal.rows);
+  } catch {}
+});
+ro.observe(document.getElementById('terminal-wrap'));
+
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const statusDot  = document.getElementById('status-dot');
+const connLabel  = document.getElementById('conn-label');
+const connStatus = document.getElementById('conn-status');
+
+// ── IPC → xterm ───────────────────────────────────────────────────────────
+window.sshBridge.onData((data) => {
+  terminal.write(data);
+});
+
+window.sshBridge.onConnected((info) => {
+  statusDot.className   = 'connected';
+  connLabel.textContent = info.label || 'Connected';
+  if (info.projectName) {
+    document.title = `⚡ ${info.projectName} — QuickZack`;
+  }
+  connStatus.textContent = '';
+});
+
+window.sshBridge.onError((msg) => {
+  statusDot.className    = 'error';
+  connLabel.textContent  = 'Connection Failed';
+  connStatus.textContent = msg;
+  terminal.write(`\r\n\x1b[31m✖ ${msg}\x1b[0m\r\n`);
+});
+
+window.sshBridge.onClosed(() => {
+  statusDot.className    = 'closed';
+  connLabel.textContent  = 'Disconnected';
+  connStatus.textContent = '';
+  terminal.write('\r\n\x1b[90m[Connection closed]\x1b[0m\r\n');
+});
+
+// ── xterm → IPC (keystrokes) ──────────────────────────────────────────────
+terminal.onData((data) => {
+  window.sshBridge.sendInput(data);
+});
+
+terminal.onResize(({ cols, rows }) => {
+  window.sshBridge.resize(cols, rows);
+});
+
+// Focus terminal by default
+terminal.focus();
+</script>
+</body>
+</html>

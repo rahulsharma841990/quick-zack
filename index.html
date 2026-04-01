@@ -295,12 +295,11 @@
       margin-top: 2px;
     }
 
-    /* ── Action Hint ───────────────────────────────────────────────────── */
     .proj-action {
       flex-shrink: 0;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       font-size: 11px;
       color: var(--text-muted);
       opacity: 0;
@@ -314,6 +313,60 @@
 
     .proj-action kbd {
       font-size: 10px;
+    }
+
+    /* SSH badge chip */
+    .ssh-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(45, 212, 191, 0.12);
+      border: 1px solid rgba(45, 212, 191, 0.35);
+      color: var(--teal);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+
+    .ssh-badge:hover,
+    .ssh-badge.ssh-focus {
+      background: rgba(45, 212, 191, 0.22);
+      border-color: rgba(45, 212, 191, 0.7);
+      box-shadow: 0 0 8px rgba(45, 212, 191, 0.25);
+    }
+
+    .open-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(139, 92, 246, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      color: var(--accent-bright);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      white-space: nowrap;
+    }
+
+    .open-badge:hover,
+    .open-badge.open-focus {
+      background: rgba(139, 92, 246, 0.25);
+      border-color: rgba(139, 92, 246, 0.7);
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Left indicator pulse for SFTP projects */
+    .result-item.has-sftp.active::before {
+      background: var(--teal);
     }
 
     /* ── Footer Bar ────────────────────────────────────────────────────── */
@@ -451,6 +504,7 @@
 let allProjects = [];
 let filteredProjects = [];
 let activeIndex = -1;
+let activeAction = 'none'; // 'none' | 'ssh' | 'open'
 let fuse = null;
 let config = {};
 
@@ -553,29 +607,52 @@ function renderResults(items) {
   items.forEach((result, idx) => {
     const project = result.item || result;
     const matches = result.matches || [];
+    const isSftp  = !!project.hasSftp;
 
     const li = document.createElement('li');
-    li.className = 'result-item';
+    li.className = 'result-item' + (isSftp ? ' has-sftp' : '');
     li.dataset.index = idx;
     li.dataset.path  = project.path;
+    li.dataset.name  = project.name;
+    if (isSftp) li.dataset.sftp = JSON.stringify(project.sftpConfig);
 
     // Build highlighted name
     const nameHTML = buildHighlightedName(project.name, matches);
 
+    // SFTP icon overlay
+    const sftpDot = isSftp
+      ? `<span title="sftp.json found" style="position:absolute;bottom:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 5px rgba(45,212,191,0.7);"></span>`
+      : '';
+
+    // Action area
+    const actionHTML = isSftp
+      ? `<div class="proj-action">
+           <span class="ssh-badge" data-idx="${idx}" title="Open SSH terminal (Shift+Enter)">⚡ SSH</span>
+           <span class="open-badge" data-idx="${idx}" title="Open in editor (Enter)">📂 Open</span>
+         </div>`
+      : `<div class="proj-action">Open <kbd>↵</kbd></div>`;
+
     li.innerHTML = `
-      <div class="proj-icon type-${project.type}" title="${project.type}">
-        ${TYPE_ICONS[project.type] || '📁'}
+      <div class="proj-icon type-${project.type}" title="${project.type}" style="position:relative;">
+        ${TYPE_ICONS[project.type] || '📁'}${sftpDot}
       </div>
       <div class="proj-info">
         <div class="proj-name">${nameHTML}</div>
-        <div class="proj-path">${project.path}</div>
+        <div class="proj-path">${project.path}${
+          isSftp ? ` <span style="color:var(--teal);font-size:10px;margin-left:4px;">● SSH</span>` : ''
+        }</div>
       </div>
-      <div class="proj-action">
-        Open <kbd>↵</kbd>
-      </div>
+      ${actionHTML}
     `;
 
-    li.addEventListener('click', () => openProject(project.path));
+    // Click on row → open project (unless clicking SSH badge)
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('.ssh-badge')) {
+        openSsh(project.sftpConfig, project.name);
+      } else {
+        openProject(project.path);
+      }
+    });
     li.addEventListener('mouseenter', () => setActive(idx, false));
 
     resultsList.appendChild(li);
@@ -613,9 +690,30 @@ function escapeHtml(str) {
 }
 
 // ── Active Item Management ─────────────────────────────────────────────────
+function clearActionFocus() {
+  resultsList.querySelectorAll('.ssh-badge, .open-badge').forEach(el => {
+    el.classList.remove('ssh-focus', 'open-focus');
+  });
+  activeAction = 'none';
+}
+
+function setActionFocus(action) {
+  clearActionFocus();
+  activeAction = action;
+  const items = resultsList.querySelectorAll('.result-item');
+  const el = items[activeIndex];
+  if (!el) return;
+  if (action === 'ssh') {
+    el.querySelector('.ssh-badge')?.classList.add('ssh-focus');
+  } else if (action === 'open') {
+    el.querySelector('.open-badge')?.classList.add('open-focus');
+  }
+}
+
 function setActive(index, scroll = true) {
   const items = resultsList.querySelectorAll('.result-item');
   items.forEach(el => el.classList.remove('active'));
+  clearActionFocus();
 
   if (index < 0) index = items.length - 1;
   if (index >= items.length) index = 0;
@@ -645,6 +743,22 @@ async function openProject(projectPath) {
   }, 80);
 }
 
+// ── Open SSH ───────────────────────────────────────────────────────────────
+async function openSsh(sftpConfig, projectName) {
+  if (!sftpConfig) return;
+
+  const items = resultsList.querySelectorAll('.result-item');
+  const active = items[activeIndex];
+  if (active) {
+    active.style.background = 'rgba(45, 212, 191, 0.25)';
+    active.style.transition = 'background 0.05s';
+  }
+
+  setTimeout(async () => {
+    await window.api.openSsh(sftpConfig, projectName || '');
+  }, 80);
+}
+
 // ── Keyboard Handler ───────────────────────────────────────────────────────
 searchInput.addEventListener('keydown', (e) => {
   switch (e.key) {
@@ -658,11 +772,43 @@ searchInput.addEventListener('keydown', (e) => {
       setActive(activeIndex - 1);
       break;
 
+    case 'ArrowRight': {
+      // Only act when current row has SFTP buttons
+      const items = resultsList.querySelectorAll('.result-item');
+      const el = items[activeIndex];
+      if (!el || !el.dataset.sftp) break;
+      e.preventDefault();
+      if (activeAction === 'none' || activeAction === 'open') {
+        setActionFocus('ssh');
+      } else if (activeAction === 'ssh') {
+        setActionFocus('open');
+      }
+      break;
+    }
+
+    case 'ArrowLeft': {
+      const items = resultsList.querySelectorAll('.result-item');
+      const el = items[activeIndex];
+      if (!el || !el.dataset.sftp) break;
+      e.preventDefault();
+      if (activeAction === 'none' || activeAction === 'ssh') {
+        setActionFocus('open');
+      } else if (activeAction === 'open') {
+        setActionFocus('ssh');
+      }
+      break;
+    }
+
     case 'Enter': {
       e.preventDefault();
       const items = resultsList.querySelectorAll('.result-item');
       const active = items[activeIndex];
-      if (active) openProject(active.dataset.path);
+      if (!active) break;
+      if (activeAction === 'ssh' && active.dataset.sftp) {
+        openSsh(JSON.parse(active.dataset.sftp), active.dataset.name || '');
+      } else {
+        openProject(active.dataset.path);
+      }
       break;
     }
 

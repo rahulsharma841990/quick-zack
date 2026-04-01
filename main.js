@@ -10,6 +10,7 @@ const {
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { exec } = require('child_process');
 
 // ─── Config ─────────────────────────────────────────────────────────────────
@@ -18,11 +19,13 @@ const CONFIG_PATH = path.join(app.getPath('userData'), 'quickzack-config.json');
 
 function loadConfig() {
   const defaultSettings = {
-    projects_path: 'C:/xampp/htdocs',
+    projects_path: process.platform === 'darwin'
+      ? path.join(os.homedir(), 'Projects')
+      : 'C:/xampp/htdocs',
     editor_command: 'code',
     shortcut: 'Alt+Space',
     max_depth: 1,
-    exclude_folders: ['.git', 'node_modules', '.vs', '__pycache__', '.idea', 'vendor']
+    exclude_folders: ['.git', 'node_modules', '.vs', '__pycache__', '.idea', 'vendor', '.DS_Store']
   };
 
   if (!fs.existsSync(CONFIG_PATH)) {
@@ -222,7 +225,12 @@ function createTray() {
     {
       label: '✏️  Edit config.json',
       click: () => {
-        exec(`notepad "${CONFIG_PATH}"`);
+        // Open config in default text editor — platform-aware
+        if (process.platform === 'darwin') {
+          exec(`open -e "${CONFIG_PATH}"`);
+        } else {
+          exec(`notepad "${CONFIG_PATH}"`);
+        }
       }
     },
     { type: 'separator' },
@@ -237,7 +245,11 @@ function createTray() {
 
   tray.setContextMenu(menu);
 
+  // Windows: double-click opens launcher; macOS: single-click is the convention
   tray.on('double-click', () => showWindow());
+  if (process.platform === 'darwin') {
+    tray.on('click', () => showWindow());
+  }
 }
 
 // ─── IPC Handlers ─────────────────────────────────────────────────────────────
@@ -299,8 +311,15 @@ if (!gotLock) {
 }
 
 app.whenReady().then(async () => {
-  // Don't show in taskbar
-  app.setAppUserModelId('com.quickzack.launcher');
+  // Hide from dock on macOS — this is a tray-only app
+  if (process.platform === 'darwin') {
+    app.dock.hide();
+  }
+
+  // Set Windows taskbar app identity (Win32-only, harmless no-op elsewhere)
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.quickzack.launcher');
+  }
 
   createWindow();
   createTray();

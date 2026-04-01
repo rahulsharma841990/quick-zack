@@ -26,5 +26,11 @@ contextBridge.exposeInMainWorld('api', {
   onProjectsUpdated: (callback) => {
     ipcRenderer.on('projects-updated', (_event, projects) => callback(projects));
     return () => ipcRenderer.removeListener('projects-updated', callback);
+  },
+
+  // Listen for config live-reload event
+  onConfigUpdated: (callback) => {
+    ipcRenderer.on('config-updated', (_event, cfg) => callback(cfg));
+    return () => ipcRenderer.removeListener('config-updated', callback);
   }
 });

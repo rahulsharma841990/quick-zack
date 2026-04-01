@@ -724,6 +724,12 @@ window.api.onProjectsUpdated((projects) => {
   doSearch(searchInput.value);
 });
 
+// Config live-reloaded (projects_path changed etc.)
+window.api.onConfigUpdated((cfg) => {
+  config = cfg;
+  pathDisplay.textContent = cfg.projects_path;
+});
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 init();
 </script>

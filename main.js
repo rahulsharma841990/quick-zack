@@ -182,22 +182,8 @@ function hideWindow() {
 
 // ─── Tray ─────────────────────────────────────────────────────────────────────
 
-function createTray() {
-  // Create a simple 16x16 tray icon programmatically (neon lightning bolt shape)
-  const iconPath = path.join(__dirname, 'tray-icon.png');
-
-  // Use a blank native image if no icon file exists
-  let icon;
-  if (fs.existsSync(iconPath)) {
-    icon = nativeImage.createFromPath(iconPath);
-  } else {
-    icon = nativeImage.createEmpty();
-  }
-
-  tray = new Tray(icon);
-  tray.setToolTip('QuickZack – Project Launcher');
-
-  const menu = Menu.buildFromTemplate([
+function buildTrayMenu() {
+  return Menu.buildFromTemplate([
     {
       label: '⚡ Open QuickZack',
       click: () => showWindow()
@@ -234,9 +220,20 @@ function createTray() {
       }
     }
   ]);
+}
 
-  tray.setContextMenu(menu);
+function createTray() {
+  const iconPath = path.join(__dirname, 'tray-icon.png');
+  let icon;
+  if (fs.existsSync(iconPath)) {
+    icon = nativeImage.createFromPath(iconPath);
+  } else {
+    icon = nativeImage.createEmpty();
+  }
 
+  tray = new Tray(icon);
+  tray.setToolTip('QuickZack – Project Launcher');
+  tray.setContextMenu(buildTrayMenu());
   tray.on('double-click', () => showWindow());
 }
 
@@ -298,15 +295,8 @@ if (!gotLock) {
   });
 }
 
-app.whenReady().then(async () => {
-  // Don't show in taskbar
-  app.setAppUserModelId('com.quickzack.launcher');
-
-  createWindow();
-  createTray();
-
-  // Register global shortcut
-  const shortcut = config.shortcut || 'Alt+Space';
+function registerShortcut(shortcut) {
+  globalShortcut.unregisterAll();
   const registered = globalShortcut.register(shortcut, () => {
     if (win && win.isVisible()) {
       hideWindow();
@@ -314,16 +304,69 @@ app.whenReady().then(async () => {
       showWindow();
     }
   });
-
   if (!registered) {
     console.error(`[QuickZack] Could not register shortcut: ${shortcut}`);
   } else {
     console.log(`[QuickZack] Shortcut registered: ${shortcut}`);
   }
+}
+
+// ─── Config File Watcher ─────────────────────────────────────────────────────
+
+function watchConfig() {
+  let debounceTimer = null;
+
+  fs.watch(CONFIG_PATH, (eventType) => {
+    if (eventType !== 'change') return;
+
+    // Debounce — Notepad fires multiple events on save
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const newConfig = loadConfig();
+
+      // Re-register shortcut if it changed
+      if (newConfig.shortcut !== config.shortcut) {
+        registerShortcut(newConfig.shortcut || 'Alt+Space');
+      }
+
+      config = newConfig;
+      console.log('[QuickZack] Config reloaded:', CONFIG_PATH);
+
+      // Rebuild tray menu with new path/shortcut info
+      if (tray) tray.setContextMenu(buildTrayMenu());
+
+      // Rescan with new projects_path
+      await refreshProjects();
+
+      // Push updated projects to renderer
+      if (win) {
+        win.webContents.send('projects-updated', projectCache);
+        win.webContents.send('config-updated', config);
+      }
+
+      console.log(`[QuickZack] Auto-rescanned: ${projectCache.length} projects found.`);
+    }, 500);
+  });
+
+  console.log('[QuickZack] Watching config for changes:', CONFIG_PATH);
+}
+
+app.whenReady().then(async () => {
+  app.setAppUserModelId('com.quickzack.launcher');
+
+  createWindow();
+  createTray();
+
+  // Register global shortcut
+  registerShortcut(config.shortcut || 'Alt+Space');
 
   // Pre-scan on startup
   await refreshProjects();
-  console.log('[QuickZack] Ready. Press', shortcut, 'to open.');
+
+  // Watch config for live reload
+  watchConfig();
+
+  console.log('[QuickZack] Ready. Press', config.shortcut || 'Alt+Space', 'to open.');
 });
 
 app.on('window-all-closed', (e) => {

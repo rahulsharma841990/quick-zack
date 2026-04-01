@@ -1,0 +1,8 @@
+{
+  "projects_path": "D:/htdocs",
+  "editor_command": "antigravity",
+  "shortcut": "Alt+Space",
+  "max_depth": 1,
+  "exclude_folders": [".git", "node_modules", ".vs", "__pycache__", ".idea", "vendor"],
+  "theme": "dark"
+}

@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickZack – Instant Project Launcher for Developers</title>
+  <meta name="description" content="QuickZack is a lightning-fast desktop search launcher for developers. Open any project instantly with Alt+Space. Supports VS Code, PHPStorm, and more." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #8b5cf6;
+      --accent-bright: #a78bfa;
+      --accent-glow: rgba(139, 92, 246, 0.4);
+      --bg: #0a0a12;
+      --bg2: #0f0f1a;
+      --bg3: #13131f;
+      --border: rgba(255,255,255,0.07);
+      --text: #f0f0f5;
+      --muted: #6b6b8a;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --yellow: #fbbf24;
+      --pink: #f472b6;
+      --teal: #2dd4bf;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 6%;
+      background: rgba(10,10,18,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 700; color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo .bolt {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: 14px;
+      font-weight: 500; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .btn-nav {
+      background: var(--accent); color: #fff;
+      padding: 9px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .btn-nav:hover {
+      background: var(--accent-bright);
+      box-shadow: 0 0 30px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 6% 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%, -55%);
+      pointer-events: none;
+    }
+    .hero-glow2 {
+      position: absolute;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(96,165,250,0.1) 0%, transparent 70%);
+      bottom: 10%; right: 15%;
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.3);
+      color: var(--accent-bright);
+      font-size: 13px; font-weight: 500;
+      padding: 6px 16px; border-radius: 99px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.6s ease both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    h1 {
+      font-size: clamp(42px, 7vw, 80px);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px);
+      color: var(--muted); max-width: 560px;
+      line-height: 1.7; margin-bottom: 44px;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-cta {
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.6s 0.3s ease both;
+      margin-bottom: 64px;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff; padding: 14px 32px;
+      border-radius: 12px; font-size: 16px; font-weight: 700;
+      text-decoration: none; transition: all 0.25s;
+      box-shadow: 0 8px 30px rgba(139,92,246,0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(139,92,246,0.5);
+    }
+    .btn-primary svg { width: 20px; height: 20px; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text); padding: 14px 28px;
+      border-radius: 12px; font-size: 15px; font-weight: 500;
+      text-decoration: none; transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+    }
+
+    /* ── APP MOCKUP ── */
+    .mockup-wrap {
+      width: 100%; max-width: 680px;
+      animation: fadeUp 0.8s 0.4s ease both;
+      position: relative;
+    }
+    .mockup-glow {
+      position: absolute; inset: -30px;
+      background: radial-gradient(ellipse at center, rgba(139,92,246,0.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .mockup {
+      background: rgba(18,18,30,0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 40px 100px rgba(0,0,0,0.8),
+        0 0 60px rgba(139,92,246,0.15);
+    }
+    .mockup-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .mockup-dots { display: flex; gap: 7px; }
+    .mockup-dots span {
+      width: 12px; height: 12px; border-radius: 50%;
+    }
+    .mockup-dots span:nth-child(1) { background: #ff5f57; }
+    .mockup-dots span:nth-child(2) { background: #ffbd2e; }
+    .mockup-dots span:nth-child(3) { background: #28ca41; }
+    .mockup-search {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(139,92,246,0.25);
+      border-radius: 8px; padding: 8px 14px;
+    }
+    .mockup-search svg { color: var(--accent-bright); width: 16px; height: 16px; flex-shrink: 0; }
+    .mockup-search span { color: #9090b0; font-size: 14px; }
+    .mockup-cursor {
+      display: inline-block; width: 2px; height: 14px;
+      background: var(--accent-bright); margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .mockup-kbd {
+      font-size: 11px; color: #555570;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .mockup-kbd kbd {
+      padding: 2px 6px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; font-size: 10px; color: #6b6b8a;
+      background: rgba(255,255,255,0.03);
+    }
+    .mockup-results { padding: 8px 0; }
+    .mockup-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 20px;
+      transition: background 0.15s;
+    }
+    .mockup-item.active { background: rgba(139,92,246,0.14); position: relative; }
+    .mockup-item.active::before {
+      content: ''; position: absolute;
+      left: 0; top: 10%; height: 80%; width: 3px;
+      background: var(--accent-bright); border-radius: 0 3px 3px 0;
+    }
+    .mockup-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 16px; flex-shrink: 0;
+    }
+    .mockup-info { flex: 1; }
+    .mockup-name { font-size: 13px; font-weight: 500; color: #f0f0f5; }
+    .mockup-name mark { background: transparent; color: var(--accent-bright); font-weight: 700; }
+    .mockup-path { font-size: 11px; color: #555570; margin-top: 2px; }
+    .mockup-open { font-size: 11px; color: #555570; opacity: 0; }
+    .mockup-item.active .mockup-open { opacity: 1; }
+    .mockup-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px; color: #555570;
+    }
+    .mockup-footer span { color: var(--accent-bright); font-weight: 600; }
+
+    /* ── SHORTCUT BADGE ── */
+    .shortcut-hint {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 20px;
+      font-size: 13px; color: var(--muted);
+    }
+    .shortcut-hint kbd {
+      padding: 4px 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; font-size: 12px; color: var(--text);
+      background: rgba(255,255,255,0.05);
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── SECTION SHARED ── */
+    section { padding: 100px 6%; }
+    .section-label {
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--accent-bright); margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.025em; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 17px; color: var(--muted);
+      line-height: 1.7; max-width: 540px;
+    }
+
+    /* ── FEATURES ── */
+    #features { background: var(--bg2); }
+    .features-header { text-align: center; margin-bottom: 64px; }
+    .features-header .section-sub { margin: 0 auto; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 1100px; margin: 0 auto;
+    }
+    .feat-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px;
+      transition: all 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .feat-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--feat-color, var(--accent)) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .feat-card:hover::before { opacity: 0.06; }
+    .feat-card:hover {
+      border-color: rgba(139,92,246,0.25);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+    .feat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 20px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .feat-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    /* ── HOW IT WORKS ── */
+    #how { background: var(--bg); }
+    .how-wrap {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+      max-width: 1100px; margin: 0 auto;
+    }
+    .steps { display: flex; flex-direction: column; gap: 8px; }
+    .step {
+      display: flex; gap: 20px; align-items: flex-start;
+      padding: 24px; border-radius: 14px;
+      border: 1px solid transparent;
+      transition: all 0.25s; cursor: default;
+    }
+    .step:hover {
+      background: rgba(139,92,246,0.07);
+      border-color: rgba(139,92,246,0.2);
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800;
+      box-shadow: 0 4px 16px rgba(139,92,246,0.4);
+    }
+    .step-content {}
+    .step-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .step-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .how-visual {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 40px;
+      text-align: center;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.4);
+    }
+    .how-visual .big-key {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: rgba(139,92,246,0.12);
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 16px; padding: 20px 32px;
+      font-size: 28px; font-weight: 800;
+      color: var(--accent-bright);
+      margin-bottom: 24px;
+      box-shadow: 0 0 40px rgba(139,92,246,0.2);
+    }
+    .how-visual p { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+    .lang-tags { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .lang-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 99px;
+      font-size: 13px; font-weight: 500;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.2s;
+    }
+    .lang-tag:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    /* ── DOWNLOAD ── */
+    #download {
+      background: var(--bg2);
+      text-align: center;
+    }
+    .dl-cards {
+      display: flex; gap: 20px; justify-content: center;
+      flex-wrap: wrap; margin: 48px 0;
+    }
+    .dl-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 40px;
+      min-width: 260px; text-align: center;
+      transition: all 0.25s;
+    }
+    .dl-card:hover {
+      border-color: rgba(139,92,246,0.3);
+      transform: translateY(-6px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.4), 0 0 30px rgba(139,92,246,0.1);
+    }
+    .dl-card .dl-icon { font-size: 40px; margin-bottom: 16px; }
+    .dl-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .dl-card p { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+    .btn-dl {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff; padding: 12px 24px;
+      border-radius: 10px; font-size: 14px; font-weight: 700;
+      text-decoration: none; transition: all 0.2s;
+      box-shadow: 0 6px 20px rgba(139,92,246,0.35);
+    }
+    .btn-dl:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(139,92,246,0.45);
+    }
+    .dl-meta { font-size: 12px; color: var(--muted); margin-top: 12px; }
+    .dl-note {
+      font-size: 14px; color: var(--muted);
+      max-width: 480px; margin: 0 auto;
+      line-height: 1.7;
+    }
+    .dl-note code {
+      font-family: 'Courier New', monospace;
+      background: rgba(255,255,255,0.07);
+      padding: 2px 8px; border-radius: 5px;
+      color: var(--accent-bright); font-size: 13px;
+    }
+
+    /* ── CONFIG SECTION ── */
+    #config { background: var(--bg); }
+    .config-wrap {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: start;
+    }
+    .config-code {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; color: var(--muted);
+    }
+    .code-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .code-body {
+      padding: 20px; font-family: 'Courier New', monospace;
+      font-size: 13px; line-height: 1.8;
+      overflow-x: auto;
+    }
+    .code-key { color: var(--accent-bright); }
+    .code-str { color: var(--green); }
+    .code-num { color: var(--orange); }
+    .code-arr { color: var(--blue); }
+    .config-fields { display: flex; flex-direction: column; gap: 20px; }
+    .config-field {
+      padding: 20px; border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .config-field:hover { border-color: rgba(139,92,246,0.25); }
+    .config-key {
+      font-size: 13px; font-weight: 700;
+      color: var(--accent-bright); font-family: monospace;
+      margin-bottom: 6px;
+    }
+    .config-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 48px 6%;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 20px;
+    }
+    .footer-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 16px; font-weight: 700;
+    }
+    .footer-logo .bolt {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .footer-right { font-size: 13px; color: var(--muted); }
+    .footer-right a { color: var(--accent-bright); text-decoration: none; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 5%; }
+      .nav-links { display: none; }
+      .how-wrap { grid-template-columns: 1fr; gap: 40px; }
+      .config-wrap { grid-template-columns: 1fr; gap: 32px; }
+      .dl-cards { flex-direction: column; align-items: center; }
+      footer { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="bolt">⚡</div>
+    QuickZack
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="#config">Config</a>
+    <a href="#download" class="btn-nav">Download Free</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Free & Open Source · Windows · v1.0.0
+  </div>
+
+  <h1>
+    Open Any Project<br/>
+    <span class="grad">In One Keystroke</span>
+  </h1>
+
+  <p class="hero-sub">
+    QuickZack is a lightning-fast project launcher for developers.
+    Hit <strong style="color:var(--text)">Alt+Space</strong> anywhere, type a few letters,
+    and your project opens instantly in your favorite editor.
+  </p>
+
+  <div class="hero-cta">
+    <a href="#download" class="btn-primary" id="hero-download-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+      </svg>
+      Download for Windows
+    </a>
+    <a href="#how" class="btn-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/>
+      </svg>
+      See How It Works
+    </a>
+  </div>
+
+  <!-- APP MOCKUP -->
+  <div class="mockup-wrap">
+    <div class="mockup-glow"></div>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="mockup-search">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+          </svg>
+          <span>my-react<span class="mockup-cursor"></span></span>
+        </div>
+        <div class="mockup-kbd">
+          <kbd>↑↓</kbd> navigate &nbsp;<kbd>↵</kbd> open &nbsp;<kbd>Esc</kbd> close
+        </div>
+      </div>
+      <div class="mockup-results">
+        <div class="mockup-item active">
+          <div class="mockup-icon">📦</div>
+          <div class="mockup-info">
+            <div class="mockup-name"><mark>my-react</mark>-dashboard</div>
+            <div class="mockup-path">C:/xampp/htdocs/my-react-dashboard</div>
+          </div>
+          <div class="mockup-open">Open <kbd style="padding:2px 5px;border:1px solid #333;border-radius:4px;font-size:10px;color:#888;">↵</kbd></div>
+        </div>
+        <div class="mockup-item">
+          <div class="mockup-icon">📦</div>
+          <div class="mockup-info">
+            <div class="mockup-name"><mark>my-react</mark>-native-app</div>
+            <div class="mockup-path">C:/xampp/htdocs/my-react-native-app</div>
+          </div>
+          <div class="mockup-open">Open <kbd style="padding:2px 5px;border:1px solid #333;border-radius:4px;font-size:10px;color:#888;">↵</kbd></div>
+        </div>
+        <div class="mockup-item">
+          <div class="mockup-icon">🐘</div>
+          <div class="mockup-info">
+            <div class="mockup-name">laravel-api</div>
+            <div class="mockup-path">C:/xampp/htdocs/laravel-api</div>
+          </div>
+          <div class="mockup-open">Open <kbd style="padding:2px 5px;border:1px solid #333;border-radius:4px;font-size:10px;color:#888;">↵</kbd></div>
+        </div>
+        <div class="mockup-item">
+          <div class="mockup-icon">🐍</div>
+          <div class="mockup-info">
+            <div class="mockup-name">python-scraper</div>
+            <div class="mockup-path">C:/xampp/htdocs/python-scraper</div>
+          </div>
+          <div class="mockup-open">Open <kbd style="padding:2px 5px;border:1px solid #333;border-radius:4px;font-size:10px;color:#888;">↵</kbd></div>
+        </div>
+      </div>
+      <div class="mockup-footer">
+        <span>⚡ QuickZack &nbsp;&nbsp; <span>42</span> projects indexed</span>
+        <span>Alt+Space to toggle</span>
+      </div>
+    </div>
+    <div class="shortcut-hint">
+      Press <kbd>Alt</kbd> + <kbd>Space</kbd> anywhere to launch
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="features-header">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything a Developer Needs</h2>
+    <p class="section-sub">No fluff, no bloat — just a fast, keyboard-driven launcher that gets out of your way.</p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feat-card" style="--feat-color: #8b5cf6">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title">Instant Global Shortcut</div>
+      <div class="feat-desc">Press <strong style="color:var(--accent-bright)">Alt+Space</strong> from anywhere — browser, terminal, anywhere — and QuickZack pops up instantly. No clicks, no distractions.</div>
+    </div>
+    <div class="feat-card" style="--feat-color: #34d399">
+      <div class="feat-icon">🔍</div>
+      <div class="feat-title">Fuzzy Search</div>
+      <div class="feat-desc">Powered by Fuse.js fuzzy search. Type "rct" and find "my-react-app". Typos welcome — it understands what you mean.</div>
+    </div>
+    <div class="feat-card" style="--feat-color: #60a5fa">
+      <div class="feat-icon">🎯</div>
+      <div class="feat-title">Open in Any Editor</div>
+      <div class="feat-desc">Works with VS Code, PHPStorm, Sublime, WebStorm — any editor. Just set the <code style="color:var(--accent-bright);font-family:monospace">editor_command</code> in config and you're done.</div>
+    </div>
+    <div class="feat-card" style="--feat-color: #fb923c">
+      <div class="feat-icon">🔀</div>
+      <div class="feat-title">Auto Project Detection</div>
+      <div class="feat-desc">Automatically detects Node.js, PHP, Python, Rust, Go, Java, and Git projects — showing the right icon for every project type.</div>
+    </div>
+    <div class="feat-card" style="--feat-color: #f472b6">
+      <div class="feat-icon">🗂️</div>
+      <div class="feat-title">Lives in System Tray</div>
+      <div class="feat-desc">Runs quietly in your system tray. No taskbar clutter. Always ready, zero overhead. Right-click for quick actions like Rescan.</div>
+    </div>
+    <div class="feat-card" style="--feat-color: #2dd4bf">
+      <div class="feat-icon">⚙️</div>
+      <div class="feat-title">Simple JSON Config</div>
+      <div class="feat-desc">Configure your projects folder, editor, shortcut, and excluded folders. One JSON file. That's it.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="how-wrap">
+    <div>
+      <div class="section-label">How It Works</div>
+      <h2 class="section-title">Up and running<br/>in 60 seconds</h2>
+      <p class="section-sub" style="margin-bottom: 40px;">No setup wizard, no account needed. Download, install, and you're launching projects instantly.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Download & Install</div>
+            <div class="step-desc">Run the <code style="color:var(--accent-bright);font-family:monospace">.exe</code> installer or use the portable version — no admin rights required.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Set Your Projects Folder</div>
+            <div class="step-desc">Open <code style="color:var(--accent-bright);font-family:monospace">config.json</code> from the tray icon and set your <code style="color:var(--green);font-family:monospace">projects_path</code> (e.g. C:/xampp/htdocs).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Press Alt+Space</div>
+            <div class="step-desc">QuickZack scans your folder and shows all projects. Start typing to filter. Press Enter to open in your editor.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Work Faster!</div>
+            <div class="step-desc">That's it. No more hunting through File Explorer or memorizing paths. Just type and go.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="how-visual">
+      <div class="big-key">
+        ⚡ Alt + Space
+      </div>
+      <p>Launch from anywhere, anytime</p>
+      <div class="lang-tags">
+        <div class="lang-tag">📦 Node.js</div>
+        <div class="lang-tag">🐘 PHP</div>
+        <div class="lang-tag">🐍 Python</div>
+        <div class="lang-tag">🦀 Rust</div>
+        <div class="lang-tag">🐹 Go</div>
+        <div class="lang-tag">☕ Java</div>
+        <div class="lang-tag">🔀 Git Repos</div>
+        <div class="lang-tag">📁 Any Folder</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONFIG -->
+<section id="config">
+  <div class="config-wrap">
+    <div>
+      <div class="section-label">Configuration</div>
+      <h2 class="section-title">Simple to<br/>Customize</h2>
+      <p class="section-sub" style="margin-bottom: 32px;">One JSON file controls everything. Edit it from the tray icon with Notepad — no restarts needed after rescan.</p>
+      <div class="config-fields">
+        <div class="config-field">
+          <div class="config-key">projects_path</div>
+          <div class="config-desc">Your root folder where all projects live. QuickZack scans this directory for projects.</div>
+        </div>
+        <div class="config-field">
+          <div class="config-key">editor_command</div>
+          <div class="config-desc">Command to open your editor. Use <code style="color:var(--accent-bright);font-family:monospace">code</code> for VS Code, <code style="color:var(--accent-bright);font-family:monospace">phpstorm</code> for PHPStorm, or any custom command.</div>
+        </div>
+        <div class="config-field">
+          <div class="config-key">shortcut</div>
+          <div class="config-desc">Keyboard shortcut to toggle the launcher. Default is <code style="color:var(--accent-bright);font-family:monospace">Alt+Space</code>. Change to anything you prefer.</div>
+        </div>
+        <div class="config-field">
+          <div class="config-key">exclude_folders</div>
+          <div class="config-desc">Folders to skip when scanning. Defaults exclude <code style="color:var(--accent-bright);font-family:monospace">node_modules</code>, <code style="color:var(--accent-bright);font-family:monospace">.git</code>, <code style="color:var(--accent-bright);font-family:monospace">vendor</code>, etc.</div>
+        </div>
+      </div>
+    </div>
+    <div class="config-code">
+      <div class="code-header">
+        <div class="code-dot"></div>
+        config.json
+      </div>
+      <div class="code-body">
+        <span style="color:var(--muted)">{</span><br/>
+        &nbsp;&nbsp;<span class="code-key">"projects_path"</span>: <span class="code-str">"C:/xampp/htdocs"</span>,<br/>
+        &nbsp;&nbsp;<span class="code-key">"editor_command"</span>: <span class="code-str">"code"</span>,<br/>
+        &nbsp;&nbsp;<span class="code-key">"shortcut"</span>: <span class="code-str">"Alt+Space"</span>,<br/>
+        &nbsp;&nbsp;<span class="code-key">"max_depth"</span>: <span class="code-num">1</span>,<br/>
+        &nbsp;&nbsp;<span class="code-key">"exclude_folders"</span>: <span class="code-arr">[</span><br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-str">".git"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-str">"node_modules"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-str">"vendor"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-str">".vs"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-str">"__pycache__"</span><br/>
+        &nbsp;&nbsp;<span class="code-arr">]</span><br/>
+        <span style="color:var(--muted)">}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download">
+  <div class="section-label">Download</div>
+  <h2 class="section-title">Free. Forever.</h2>
+  <p class="section-sub" style="margin: 0 auto 8px;">No license keys. No subscriptions. Just a fast, free tool built for developers.</p>
+
+  <div class="dl-cards">
+    <div class="dl-card">
+      <div class="dl-icon">🪟</div>
+      <h3>Installer (.exe)</h3>
+      <p>Full installer with Start Menu shortcut, auto-start on login, and easy uninstall.</p>
+      <a href="dist/QuickZack Setup 1.0.0.exe" class="btn-dl" id="download-installer-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        Download Installer
+      </a>
+      <div class="dl-meta">Windows 10/11 · x64 · ~80MB</div>
+    </div>
+    <div class="dl-card">
+      <div class="dl-icon">📦</div>
+      <h3>Portable (.exe)</h3>
+      <p>No installation needed. Run directly from any folder — perfect for USB drives.</p>
+      <a href="dist/QuickZack-Portable-1.0.0.exe" class="btn-dl" id="download-portable-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        Download Portable
+      </a>
+      <div class="dl-meta">Windows 10/11 · x64 · ~80MB</div>
+    </div>
+  </div>
+
+  <p class="dl-note">
+    After installing, look for the ⚡ icon in your system tray.<br/>
+    Right-click → <strong style="color:var(--text)">Edit config.json</strong> to set your projects folder.<br/>
+    Then press <code>Alt+Space</code> anywhere to start launching!
+  </p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <div class="bolt">⚡</div>
+    QuickZack
+  </div>
+  <div class="footer-right">
+    Made with ❤️ for developers &nbsp;·&nbsp; MIT License &nbsp;·&nbsp;
+    <a href="https://github.com" target="_blank">GitHub</a> &nbsp;·&nbsp;
+    v1.0.0
+  </div>
+</footer>
+
+<script>
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Scroll reveal animation
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animation = 'fadeUp 0.6s ease both';
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.feat-card, .step, .dl-card, .config-field').forEach(el => {
+    el.style.opacity = '0';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>

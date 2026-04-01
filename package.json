@@ -1,0 +1,69 @@
+{
+  "name": "quick-zack",
+  "version": "1.0.0",
+  "description": "A lightweight desktop search utility for quickly opening dev projects",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "keywords": ["electron", "search", "launcher", "developer-tool"],
+  "author": "QuickZack",
+  "license": "MIT",
+  "dependencies": {
+    "fuse.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.quickzack.launcher",
+    "productName": "QuickZack",
+    "copyright": "Copyright © 2025 QuickZack",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "config.json",
+      "tray-icon.png",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "QuickZack",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "QuickZack-Portable-${version}.exe"
+    }
+  }
+}

@@ -43,16 +43,20 @@
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 6%;
-      background: rgba(10,10,18,0.7);
-      backdrop-filter: blur(20px);
+      padding: 16px 6%;
+      background: rgba(10,10,18,0.85);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
       border-bottom: 1px solid var(--border);
+      transition: all 0.3s ease;
     }
     .nav-logo {
       display: flex; align-items: center; gap: 10px;
       font-size: 18px; font-weight: 700; color: var(--text);
       text-decoration: none;
+      transition: opacity 0.2s;
     }
+    .nav-logo:hover { opacity: 0.9; }
     .nav-logo .bolt {
       width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--accent), var(--accent-bright));
@@ -63,21 +67,34 @@
     }
     .nav-links { display: flex; align-items: center; gap: 32px; }
     .nav-links a {
-      color: var(--muted); text-decoration: none; font-size: 14px;
+      color: #ffffff; text-decoration: none; font-size: 14px;
       font-weight: 500; transition: color 0.2s;
+      position: relative;
     }
-    .nav-links a:hover { color: var(--text); }
-    .btn-nav {
-      background: var(--accent); color: #fff;
-      padding: 9px 20px; border-radius: 8px;
-      font-size: 14px; font-weight: 600; text-decoration: none;
-      transition: all 0.2s;
-      box-shadow: 0 0 20px var(--accent-glow);
-    }
-    .btn-nav:hover {
+    .nav-links a:not(.btn-nav)::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 2px;
       background: var(--accent-bright);
-      box-shadow: 0 0 30px var(--accent-glow);
-      transform: translateY(-1px);
+      transition: width 0.2s ease;
+    }
+    .nav-links a:not(.btn-nav):hover { color: var(--text); }
+    .nav-links a:not(.btn-nav):hover::after { width: 100%; }
+    .btn-nav {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #ffffff;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(139,92,246,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-nav svg { width: 14px; height: 14px; }
+    .btn-nav:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.45);
     }
 
     /* ── HERO ── */
@@ -401,9 +418,80 @@
       background: var(--bg2);
       text-align: center;
     }
-    .dl-cards {
-      display: flex; gap: 20px; justify-content: center;
-      flex-wrap: wrap; margin: 48px 0;
+    .dl-platform {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 720px;
+      margin: 0 auto 48px;
+    }
+    .dl-platform-group {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      transition: all 0.25s;
+    }
+    .dl-platform-group:hover {
+      border-color: rgba(139,92,246,0.3);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.4), 0 0 30px rgba(139,92,246,0.1);
+    }
+    .dl-platform-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      color: var(--text);
+    }
+    .dl-platform-title {
+      font-size: 20px; font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .dl-options {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .dl-option {
+      display: block;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .dl-option:hover {
+      background: rgba(139,92,246,0.08);
+      border-color: rgba(139,92,246,0.25);
+      transform: translateY(-2px);
+    }
+    .dl-option-content {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .dl-option-info { flex: 1; text-align: left; }
+    .dl-option-name {
+      font-size: 15px; font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .dl-option-desc {
+      font-size: 12px; color: var(--muted);
+    }
+    .dl-option svg {
+      color: var(--accent-bright);
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+    .dl-option:hover svg {
+      transform: translateY(2px);
+    }
+    .dl-option-meta {
+      font-size: 11px; color: var(--muted);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
     }
     .dl-card {
       background: var(--bg3);
@@ -523,6 +611,7 @@
       .how-wrap { grid-template-columns: 1fr; gap: 40px; }
       .config-wrap { grid-template-columns: 1fr; gap: 32px; }
       .dl-cards { flex-direction: column; align-items: center; }
+      .dl-platform { grid-template-columns: 1fr; }
       footer { flex-direction: column; text-align: center; }
     }
   </style>
@@ -539,7 +628,12 @@
     <a href="#features">Features</a>
     <a href="#how">How It Works</a>
     <a href="#config">Config</a>
-    <a href="#download" class="btn-nav">Download Free</a>
+    <a href="#download" class="btn-nav">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+      </svg>
+      Download Free
+    </a>
   </div>
 </nav>
 
@@ -576,12 +670,6 @@
         <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
       </svg>
       Download for macOS
-    </a>
-    <a href="#how" class="btn-secondary">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/>
-      </svg>
-      See How It Works
     </a>
   </div>
 
@@ -802,56 +890,77 @@
 <section id="download">
   <div class="section-label">Download</div>
   <h2 class="section-title">Free. Forever.</h2>
-  <p class="section-sub" style="margin: 0 auto 8px;">No license keys. No subscriptions. Just a fast, free tool built for developers.</p>
+  <p class="section-sub" style="margin: 0 auto 48px;">No license keys. No subscriptions. Just a fast, free tool built for developers.</p>
 
-  <div class="dl-cards">
-    <div class="dl-card">
-      <div class="dl-icon">🪟</div>
-      <h3>Installer (.exe)</h3>
-      <p>Full installer with Start Menu shortcut, auto-start on login, and easy uninstall.</p>
-      <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack.Setup.1.1.0.exe" class="btn-dl" id="download-installer-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+  <div class="dl-platform">
+    <div class="dl-platform-group">
+      <div class="dl-platform-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 12V6.75l6-1.32v6.48L3 12zm17-9v8.75l-10 .15V5.1L20 3zM3 13l6 .09v6.81l-6-1.15V13zm7 .18l10-.18v5.75l-10 1.75V13.18z"/>
         </svg>
-        Download Installer
-      </a>
-      <div class="dl-meta">Windows 10/11 · x64 · ~80MB</div>
+      </div>
+      <h3 class="dl-platform-title">Windows</h3>
+      <div class="dl-options">
+        <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack.Setup.1.1.0.exe" class="dl-option" id="download-installer-btn">
+          <div class="dl-option-content">
+            <div class="dl-option-info">
+              <div class="dl-option-name">Installer</div>
+              <div class="dl-option-desc">Start Menu shortcut · Auto-start</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </div>
+          <div class="dl-option-meta">Windows 10/11 · x64 · ~80MB</div>
+        </a>
+        <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-Portable-1.1.0.exe" class="dl-option" id="download-portable-btn">
+          <div class="dl-option-content">
+            <div class="dl-option-info">
+              <div class="dl-option-name">Portable</div>
+              <div class="dl-option-desc">No install · USB drive ready</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </div>
+          <div class="dl-option-meta">Windows 10/11 · x64 · ~80MB</div>
+        </a>
+      </div>
     </div>
-    <div class="dl-card">
-      <div class="dl-icon">📦</div>
-      <h3>Portable (.exe)</h3>
-      <p>No installation needed. Run directly from any folder — perfect for USB drives.</p>
-      <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-Portable-1.1.0.exe" class="btn-dl" id="download-portable-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+
+    <div class="dl-platform-group">
+      <div class="dl-platform-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
         </svg>
-        Download Portable
-      </a>
-      <div class="dl-meta">Windows 10/11 · x64 · ~80MB</div>
-    </div>
-    <div class="dl-card">
-      <div class="dl-icon">🍎</div>
-      <h3>macOS (.dmg) — Apple Silicon</h3>
-      <p>Native ARM build for M1/M2/M3/M4 Macs. Open the .dmg and drag QuickZack to Applications.</p>
-      <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-arm64.dmg" class="btn-dl" id="download-mac-arm64-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
-        </svg>
-        Download for Apple Silicon
-      </a>
-      <div class="dl-meta">macOS 12+ · arm64 · ~80MB</div>
-    </div>
-    <div class="dl-card">
-      <div class="dl-icon">💻</div>
-      <h3>macOS (.dmg) — Intel</h3>
-      <p>x64 build for Intel Macs. Open the .dmg and drag QuickZack to Applications.</p>
-      <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-x64.dmg" class="btn-dl" id="download-mac-x64-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
-        </svg>
-        Download for Intel Mac
-      </a>
-      <div class="dl-meta">macOS 12+ · x64 · ~80MB</div>
+      </div>
+      <h3 class="dl-platform-title">macOS</h3>
+      <div class="dl-options">
+        <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-arm64.dmg" class="dl-option" id="download-mac-arm64-btn">
+          <div class="dl-option-content">
+            <div class="dl-option-info">
+              <div class="dl-option-name">Apple Silicon</div>
+              <div class="dl-option-desc">M1/M2/M3/M4 · Native ARM</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </div>
+          <div class="dl-option-meta">macOS 12+ · arm64 · ~80MB</div>
+        </a>
+        <a href="https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-x64.dmg" class="dl-option" id="download-mac-x64-btn">
+          <div class="dl-option-content">
+            <div class="dl-option-info">
+              <div class="dl-option-name">Intel</div>
+              <div class="dl-option-desc">x64 · Legacy Mac support</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </div>
+          <div class="dl-option-meta">macOS 12+ · x64 · ~80MB</div>
+        </a>
+      </div>
     </div>
   </div>
 

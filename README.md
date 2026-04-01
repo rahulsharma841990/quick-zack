@@ -93,8 +93,8 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                         | Description                                 | Size  |
 | --------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack Setup 1.1.0.exe**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack.Setup.1.1.0.exe)    | Full installer with Start Menu & auto-start | ~80MB |
-| [**QuickZack-Portable-1.1.0.exe**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-Portable-1.1.0.exe) | No install needed, run anywhere             | ~80MB |
+| [**QuickZack Setup 1.1.0.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.1.0/QuickZack.Setup.1.1.0.exe)    | Full installer with Start Menu & auto-start | ~80MB |
+| [**QuickZack-Portable-1.1.0.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.1.0/QuickZack-Portable-1.1.0.exe) | No install needed, run anywhere             | ~80MB |
 
 > **Requirements:** Windows 10 or 11 (64-bit)
 
@@ -102,8 +102,8 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                         | Description                                 | Size  |
 | --------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack-1.1.0-arm64.dmg**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4)                 | ~80MB |
-| [**QuickZack-1.1.0.dmg**](https://github.com/jaskaran-ai/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0.dmg) | Intel Mac (x64)                             | ~80MB |
+| [**QuickZack-1.1.0-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4)                 | ~80MB |
+| [**QuickZack-1.1.0.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.1.0/QuickZack-1.1.0.dmg) | Intel Mac (x64)                             | ~80MB |
 
 > **Requirements:** macOS 12+ (Monterey or later)
 

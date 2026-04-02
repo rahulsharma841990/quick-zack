@@ -349,69 +349,83 @@ function createSshTerminal(sftpConfig, projectName) {
     }
   });
 
-  // Remove File / Edit / View / Window / Help menu bar
   termWin.setMenu(null);
+
+  const wcId = termWin.webContents.id;
 
   termWin.loadFile('terminal.html');
 
   const conn = new SshClient();
 
-  termWin.webContents.on('did-finish-load', () => {
-    // Ensure title stays (HTML title tag would override it otherwise)
-    termWin.setTitle(windowTitle);
+  // Queue IPC messages that arrive before the page finishes loading
+  let pageReady = false;
+  const pendingEvents = [];
 
-    conn
-      .on('ready', () => {
-        termWin.webContents.send('ssh-connected', {
-          label:       `${user}@${host}:${port}`,
-          projectName: displayName
-        });
+  function safeSend(channel, ...args) {
+    if (pageReady) {
+      try { termWin.webContents.send(channel, ...args); } catch {}
+    } else {
+      pendingEvents.push({ channel, args });
+    }
+  }
 
-        conn.shell(
-          { term: 'xterm-256color', cols: 220, rows: 50 },
-          (err, stream) => {
-            if (err) {
-              try { termWin.webContents.send('ssh-error', err.message); } catch {}
-              return;
-            }
-
-            // Store stream keyed by pre-captured wcId
-            sshSessions.set(wcId, stream);
-
-            // SSH → renderer  (guard with try/catch — window may close any time)
-            stream.on('data', (data) => {
-              try { termWin.webContents.send('ssh-data', data.toString('utf8')); } catch {}
-            });
-
-            stream.stderr.on('data', (data) => {
-              try { termWin.webContents.send('ssh-data', data.toString('utf8')); } catch {}
-            });
-
-            stream.on('close', () => {
-              try { termWin.webContents.send('ssh-closed'); } catch {}
-              sshSessions.delete(wcId);
-              try { conn.end(); } catch {}
-            });
-          }
-        );
-      })
-      .on('error', (err) => {
-        console.error('[QuickZack] SSH error:', err.message);
-        try { termWin.webContents.send('ssh-error', err.message); } catch {}
-      })
-      .connect({
-        host,
-        port,
-        username: user,
-        password,
-        // Accept any host key (same as StrictHostKeyChecking=no)
-        hostVerifier: () => true,
-        readyTimeout: 20000,
+  // ── Start SSH immediately (parallel with page load) ──────────────────
+  conn
+    .on('ready', () => {
+      safeSend('ssh-connected', {
+        label:       `${user}@${host}:${port}`,
+        projectName: displayName
       });
-  });
 
-  // Capture id NOW while webContents is still alive
-  const wcId = termWin.webContents.id;
+      conn.shell(
+        { term: 'xterm-256color', cols: 220, rows: 50 },
+        (err, stream) => {
+          if (err) {
+            safeSend('ssh-error', err.message);
+            return;
+          }
+
+          sshSessions.set(wcId, stream);
+
+          stream.on('data', (data) => {
+            safeSend('ssh-data', data.toString('utf8'));
+          });
+
+          stream.stderr.on('data', (data) => {
+            safeSend('ssh-data', data.toString('utf8'));
+          });
+
+          stream.on('close', () => {
+            safeSend('ssh-closed');
+            sshSessions.delete(wcId);
+            try { conn.end(); } catch {}
+          });
+        }
+      );
+    })
+    .on('error', (err) => {
+      console.error('[QuickZack] SSH error:', err.message);
+      safeSend('ssh-error', err.message);
+    })
+    .connect({
+      host,
+      port,
+      username: user,
+      password,
+      hostVerifier: () => true,
+      readyTimeout: 20000,
+    });
+
+  // ── Once page is ready, flush any queued SSH events ──────────────────
+  termWin.webContents.on('did-finish-load', () => {
+    termWin.setTitle(windowTitle);
+    pageReady = true;
+
+    for (const { channel, args } of pendingEvents) {
+      try { termWin.webContents.send(channel, ...args); } catch {}
+    }
+    pendingEvents.length = 0;
+  });
 
   termWin.on('closed', () => {
     const stream = sshSessions.get(wcId);

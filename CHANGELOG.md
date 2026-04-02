@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2026-04-02
+
+### Added
+- Copy and paste functionality in terminal
+
 ## [1.2.1] - 2026-04-02
 
 ### Fixed

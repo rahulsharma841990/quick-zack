@@ -201,6 +201,29 @@ terminal.onResize(({ cols, rows }) => {
   window.sshBridge.resize(cols, rows);
 });
 
+// ── Copy & Paste ──────────────────────────────────────────────────────────
+
+terminal.onSelectionChange(() => {
+  if (terminal.hasSelection()) {
+    const text = terminal.getSelection();
+    navigator.clipboard.writeText(text).catch(console.error);
+  }
+});
+
+
+window.addEventListener('contextmenu', async (e) => {
+  e.preventDefault();
+  
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      window.sshBridge.sendInput(text);
+    }
+  } catch (err) {
+    console.error('Clipboard paste error:', err);
+  }
+});
+
 // Focus terminal by default
 terminal.focus();
 </script>

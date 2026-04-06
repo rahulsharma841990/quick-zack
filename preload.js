@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('api', {
   // Open SSH terminal using sftp.json config
   openSsh: (sftpConfig, projectName) => ipcRenderer.invoke('open-ssh', sftpConfig, projectName),
 
+  // Open native local terminal in the project directory
+  openTerminal: (projectPath) => ipcRenderer.invoke('open-terminal', projectPath),
+
   // Hide the window
   hideWindow: () => ipcRenderer.send('hide-window'),
 

@@ -12,6 +12,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { exec, execSync } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 const { Client: SshClient } = require('ssh2');
 
 // Active SSH sessions: webContents.id → ssh2 Shell stream
@@ -61,61 +63,153 @@ let config = loadConfig();
 
 let projectCache = [];
 
-async function scanProjects() {
-  return new Promise((resolve) => {
-    const projectsPath = config.projects_path;
-    const excluded = new Set(config.exclude_folders || []);
+// Common git executable paths on Windows
+const GIT_CANDIDATES = [
+  'git',
+  'git.exe',
+  '"C:\\Program Files\\Git\\cmd\\git.exe"',
+  '"C:\\Program Files (x86)\\Git\\cmd\\git.exe"',
+];
 
-    if (!fs.existsSync(projectsPath)) {
-      console.warn(`[QuickZack] projects_path "${projectsPath}" does not exist.`);
-      resolve([]);
-      return;
+async function runGit(args, cwd, timeoutMs = 3000) {
+  for (const gitBin of GIT_CANDIDATES) {
+    try {
+      const result = await execAsync(`${gitBin} ${args}`, {
+        cwd,
+        timeout: timeoutMs,
+        windowsHide: true,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
+      });
+      return result.stdout.trim();
+    } catch (e) {
+      const msg = (e.message || '').toLowerCase();
+      const isNotFound = msg.includes('not found') || msg.includes('is not recognized') || msg.includes('enoent') || msg.includes('no such file');
+      if (!isNotFound) {
+        return (e.stdout || '').trim();
+      }
+    }
+  }
+  return null;
+}
+
+
+function readBranchFromFile(dirPath) {
+  try {
+    const headFile = path.join(dirPath, '.git', 'HEAD');
+    if (!fs.existsSync(headFile)) return null;
+    const content = fs.readFileSync(headFile, 'utf-8').trim();
+    // Format: "ref: refs/heads/main"
+    if (content.startsWith('ref: refs/heads/')) {
+      return content.replace('ref: refs/heads/', '');
+    }
+    // Detached HEAD — show short hash
+    return content.slice(0, 7);
+  } catch {
+    return null;
+  }
+}
+
+
+function isDirtyFromFiles(dirPath) {
+  try {
+    const gitDir = path.join(dirPath, '.git');
+    const indexFile = path.join(gitDir, 'index');
+    if (!fs.existsSync(indexFile)) return false;
+    const dirtyMarkers = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REBASE_MERGE', 'REBASE_APPLY'];
+    for (const marker of dirtyMarkers) {
+      if (fs.existsSync(path.join(gitDir, marker))) return true;
+    }
+    const headFile = path.join(gitDir, 'HEAD');
+    if (!fs.existsSync(headFile)) return false;
+
+    const indexMtime = fs.statSync(indexFile).mtimeMs;
+    const headMtime = fs.statSync(headFile).mtimeMs;
+    return indexMtime > headMtime;
+  } catch {
+    return false;
+  }
+}
+
+async function getGitStatus(dirPath) {
+  try {
+    const gitPath = path.join(dirPath, '.git');
+    if (!fs.existsSync(gitPath)) return null;
+
+    const [branchOut, statusOut] = await Promise.all([
+      runGit('rev-parse --abbrev-ref HEAD', dirPath, 3000),
+      runGit('status --porcelain', dirPath, 4000)
+    ]);
+
+    if (branchOut !== null && branchOut !== '') {
+      return {
+        branch: branchOut || 'HEAD',
+        isDirty: (statusOut || '').length > 0
+      };
     }
 
-    fs.readdir(projectsPath, { withFileTypes: true }, (err, entries) => {
-      if (err) {
-        console.error('[QuickZack] readdir error:', err.message);
-        resolve([]);
-        return;
-      }
+    const branch = readBranchFromFile(dirPath) || '?';
+    const isDirty = isDirtyFromFiles(dirPath);
+    return { branch, isDirty };
 
-      const projects = entries
-        .filter((entry) => entry.isDirectory() && !excluded.has(entry.name))
-        .map((entry) => {
-          const fullPath = path.join(projectsPath, entry.name);
-          // Check .vscode/sftp.json first (VS Code SFTP extension), then root sftp.json
-          const sftpCandidates = [
-            path.join(fullPath, '.vscode', 'sftp.json'),
-            path.join(fullPath, 'sftp.json')
-          ];
-          let hasSftp = false;
-          let sftpConfig = null;
-          for (const candidate of sftpCandidates) {
-            try {
-              if (fs.existsSync(candidate)) {
-                hasSftp = true;
-                sftpConfig = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
-                console.log(`[QuickZack] SFTP found: ${candidate}`);
-                break;
-              }
-            } catch (e) {
-              console.warn(`[QuickZack] Could not read ${candidate}:`, e.message);
+  } catch (err) {
+    return null;
+  }
+}
+
+async function scanProjects() {
+  const projectsPath = config.projects_path;
+  const excluded = new Set(config.exclude_folders || []);
+
+  if (!fs.existsSync(projectsPath)) {
+    console.warn(`[QuickZack] projects_path "${projectsPath}" does not exist.`);
+    return [];
+  }
+
+  try {
+    const entries = fs.readdirSync(projectsPath, { withFileTypes: true });
+
+    const projectPromises = entries
+      .filter((entry) => entry.isDirectory() && !excluded.has(entry.name))
+      .map(async (entry) => {
+        const fullPath = path.join(projectsPath, entry.name);
+
+        // SFTP Check
+        const sftpCandidates = [
+          path.join(fullPath, '.vscode', 'sftp.json'),
+          path.join(fullPath, 'sftp.json')
+        ];
+        let hasSftp = false;
+        let sftpConfig = null;
+        for (const candidate of sftpCandidates) {
+          try {
+            if (fs.existsSync(candidate)) {
+              hasSftp = true;
+              sftpConfig = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+              break;
             }
-          }
-          return {
-            name: entry.name,
-            path: fullPath.replace(/\\/g, '/'),
-            // detect common project types for icon hints
-            type: detectProjectType(fullPath),
-            hasSftp,
-            sftpConfig
-          };
-        });
+          } catch { }
+        }
 
-      console.log(`[QuickZack] Found ${projects.length} projects in "${projectsPath}"`);
-      resolve(projects);
-    });
-  });
+        // Git Status Check
+        const gitStatus = await getGitStatus(fullPath);
+
+        return {
+          name: entry.name,
+          path: fullPath.replace(/\\/g, '/'),
+          type: detectProjectType(fullPath),
+          hasSftp,
+          sftpConfig,
+          gitStatus
+        };
+      });
+
+    const projects = await Promise.all(projectPromises);
+    console.log(`[QuickZack] Found ${projects.length} projects in "${projectsPath}"`);
+    return projects;
+  } catch (err) {
+    console.error('[QuickZack] scanProjects error:', err.message);
+    return [];
+  }
 }
 
 function detectProjectType(dirPath) {
@@ -319,6 +413,31 @@ ipcMain.handle('open-project', async (_event, projectPath) => {
   return { success: true, command: fullCmd };
 });
 
+ipcMain.handle('open-terminal', async (_event, projectPath) => {
+
+  let fullCmd;
+  if (process.platform === 'win32') {
+    // Open PowerShell at specified Directory
+    const escapedPath = projectPath.replace(/\//g, '\\');
+    fullCmd = `start powershell.exe -NoExit -WorkingDirectory "${escapedPath}"`;
+  } else if (process.platform === 'darwin') {
+    fullCmd = `open -a Terminal "${projectPath}"`;
+  } else {
+    fullCmd = `x-terminal-emulator --working-directory="${projectPath}"`;
+  }
+
+  console.log(`[QuickZack] Opening Terminal: ${fullCmd}`);
+
+  exec(fullCmd, (err) => {
+    if (err) {
+      console.error('[QuickZack] open-terminal error:', err.message);
+    }
+  });
+
+  hideWindow();
+  return { success: true };
+});
+
 ipcMain.on('hide-window', () => {
   hideWindow();
 });
@@ -326,9 +445,9 @@ ipcMain.on('hide-window', () => {
 // ─── SSH Terminal Window ─────────────────────────────────────────────────────
 
 function createSshTerminal(sftpConfig, projectName) {
-  const host     = sftpConfig.host || '';
-  const port     = sftpConfig.port || 22;
-  const user     = sftpConfig.username || sftpConfig.user || 'root';
+  const host = sftpConfig.host || '';
+  const port = sftpConfig.port || 22;
+  const user = sftpConfig.username || sftpConfig.user || 'root';
   const password = sftpConfig.password || '';
 
   const displayName = projectName || `${user}@${host}`;
@@ -363,7 +482,7 @@ function createSshTerminal(sftpConfig, projectName) {
 
   function safeSend(channel, ...args) {
     if (pageReady) {
-      try { termWin.webContents.send(channel, ...args); } catch {}
+      try { termWin.webContents.send(channel, ...args); } catch { }
     } else {
       pendingEvents.push({ channel, args });
     }
@@ -373,7 +492,7 @@ function createSshTerminal(sftpConfig, projectName) {
   conn
     .on('ready', () => {
       safeSend('ssh-connected', {
-        label:       `${user}@${host}:${port}`,
+        label: `${user}@${host}:${port}`,
         projectName: displayName
       });
 
@@ -398,7 +517,7 @@ function createSshTerminal(sftpConfig, projectName) {
           stream.on('close', () => {
             safeSend('ssh-closed');
             sshSessions.delete(wcId);
-            try { conn.end(); } catch {}
+            try { conn.end(); } catch { }
           });
         }
       );
@@ -422,7 +541,7 @@ function createSshTerminal(sftpConfig, projectName) {
     pageReady = true;
 
     for (const { channel, args } of pendingEvents) {
-      try { termWin.webContents.send(channel, ...args); } catch {}
+      try { termWin.webContents.send(channel, ...args); } catch { }
     }
     pendingEvents.length = 0;
   });
@@ -430,10 +549,10 @@ function createSshTerminal(sftpConfig, projectName) {
   termWin.on('closed', () => {
     const stream = sshSessions.get(wcId);
     if (stream) {
-      try { stream.close(); } catch {}
+      try { stream.close(); } catch { }
       sshSessions.delete(wcId);
     }
-    try { conn.end(); } catch {}
+    try { conn.end(); } catch { }
   });
 
   return termWin;

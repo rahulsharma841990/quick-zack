@@ -839,7 +839,7 @@
         // Click on row → open project (unless clicking SSH badge or Terminal badge)
         li.addEventListener('click', (e) => {
           if (e.target.closest('.ssh-badge')) {
-            openSsh(project.sftpConfig, project.name);
+            openSsh(project.sftpConfig, project.name, project.path);
           } else if (e.target.closest('.term-badge')) {
             openTerminal(project.path);
           } else {
@@ -939,7 +939,7 @@
     }
 
     // ── Open SSH ───────────────────────────────────────────────────────────────
-    async function openSsh(sftpConfig, projectName) {
+    async function openSsh(sftpConfig, projectName, projectPath) {
       if (!sftpConfig) return;
 
       const items = resultsList.querySelectorAll('.result-item');
@@ -950,7 +950,7 @@
       }
 
       setTimeout(async () => {
-        await window.api.openSsh(sftpConfig, projectName || '');
+        await window.api.openSsh(sftpConfig, projectName || '', projectPath);
       }, 80);
     }
 
@@ -1031,7 +1031,7 @@
           if (!active) break;
 
           if (activeAction === 'ssh' && active.dataset.sftp) {
-            openSsh(JSON.parse(active.dataset.sftp), active.dataset.name || '');
+            openSsh(JSON.parse(active.dataset.sftp), active.dataset.name || '', active.dataset.path);
           } else if (activeAction === 'term') {
             openTerminal(active.dataset.path);
           } else if (activeAction === 'open') {

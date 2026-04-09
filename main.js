@@ -6,7 +6,8 @@ const {
   Tray,
   Menu,
   nativeImage,
-  screen
+  screen,
+  Notification
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -15,9 +16,67 @@ const { exec, execSync } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
 const { Client: SshClient } = require('ssh2');
+const { autoUpdater } = require('electron-updater');
 
-// Active SSH sessions: webContents.id → ssh2 Shell stream
+// ─── Auto Updater Setup ───────────────────────────────────────────────────────
+autoUpdater.autoDownload = false;
+
+autoUpdater.on('update-available', (info) => {
+  // Show green dot tray icon
+  const updateIconPath = path.join(__dirname, 'tray-icon-update.png');
+  const normalIconPath = path.join(__dirname, 'tray-icon.png');
+  if (fs.existsSync(updateIconPath) && tray) {
+    tray.setImage(updateIconPath);
+  }
+
+  if (Notification.isSupported()) {
+    const updateNotification = new Notification({
+      title: 'New Update Available! 🚀',
+      body: `Version ${info.version} is available. Click here to download & install.`,
+      icon: fs.existsSync(updateIconPath) ? updateIconPath : normalIconPath,
+      silent: false
+    });
+
+    updateNotification.on('click', () => {
+      autoUpdater.downloadUpdate();
+    });
+
+    updateNotification.show();
+  }
+});
+
+autoUpdater.on('update-downloaded', () => {
+  const readyNotif = new Notification({
+    title: 'Update Downloaded! ✅',
+    body: 'The update has been downloaded. The application will now restart to install.',
+    icon: path.join(__dirname, 'tray-icon.png')
+  });
+
+  readyNotif.on('click', () => {
+    autoUpdater.quitAndInstall();
+  });
+  readyNotif.show();
+
+  setTimeout(() => {
+    autoUpdater.quitAndInstall();
+  }, 3000);
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('[QuickZack] Auto-updater Error:', err);
+});
+// Active SSH sessions: webContents.id → shell stream
 const sshSessions = new Map();
+// Active SFTP clients: webContents.id → sftp client
+const sftpClients = new Map();
+// Current Explorer Paths tracked from UI
+const activeExplorerPaths = new Map();
+// Stat polling timers
+const statTimers = new Map();
+// Active SSH connections: webContents.id → ssh2 Client (for exec)
+const sshConns = new Map();
+// PWD check debounce timers
+const pwdTimers = new Map();
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -62,6 +121,7 @@ let config = loadConfig();
 // ─── Project Indexer ─────────────────────────────────────────────────────────
 
 let projectCache = [];
+let lastOpenedProjectPath = null; // Prioritize this in reminder scheduler
 
 // Common git executable paths on Windows
 const GIT_CANDIDATES = [
@@ -322,6 +382,13 @@ function buildTrayMenu() {
     },
     { type: 'separator' },
     {
+      label: '📥 Check for Updates',
+      click: () => {
+        autoUpdater.checkForUpdates();
+      }
+    },
+    { type: 'separator' },
+    {
       label: `📁 Projects: ${config.projects_path}`,
       enabled: false
     },
@@ -401,6 +468,7 @@ ipcMain.handle('open-project', async (_event, projectPath) => {
     fullCmd = `${cmd} "${projectPath}"`;
   }
 
+  lastOpenedProjectPath = projectPath;
   console.log(`[QuickZack] Opening: ${fullCmd}`);
 
   exec(fullCmd, (err) => {
@@ -426,6 +494,7 @@ ipcMain.handle('open-terminal', async (_event, projectPath) => {
     fullCmd = `x-terminal-emulator --working-directory="${projectPath}"`;
   }
 
+  lastOpenedProjectPath = projectPath;
   console.log(`[QuickZack] Opening Terminal: ${fullCmd}`);
 
   exec(fullCmd, (err) => {
@@ -454,10 +523,10 @@ function createSshTerminal(sftpConfig, projectName) {
   const windowTitle = `⚡ ${displayName} — QuickZack`;
 
   const termWin = new BrowserWindow({
-    width: 920,
-    height: 580,
-    minWidth: 600,
-    minHeight: 380,
+    width: 1280,
+    height: 680,
+    minWidth: 800,
+    minHeight: 480,
     title: windowTitle,
     backgroundColor: '#0d1117',
     webPreferences: {
@@ -491,10 +560,35 @@ function createSshTerminal(sftpConfig, projectName) {
   // ── Start SSH immediately (parallel with page load) ──────────────────
   conn
     .on('ready', () => {
-      safeSend('ssh-connected', {
-        label: `${user}@${host}:${port}`,
-        projectName: displayName
+      // Store raw conn for later exec calls (pwd)
+      sshConns.set(wcId, conn);
+
+      // Get home directory via SFTP before sending connected event
+      conn.sftp((sftpErr, sftp) => {
+        if (!sftpErr && sftp) {
+          sftpClients.set(wcId, sftp);
+          sftp.on('close', () => sftpClients.delete(wcId));
+        }
+
+        // Determine home directory
+        const execHomeCmd = (cb) => {
+          conn.exec('echo $HOME', (err, homeStream) => {
+            if (err) { cb('/'); return; }
+            let homeDir = '';
+            homeStream.on('data', (d) => homeDir += d.toString());
+            homeStream.on('close', () => cb(homeDir.trim() || '/'));
+          });
+        };
+
+        execHomeCmd((homeDir) => {
+          safeSend('ssh-connected', {
+            label: `${user}@${host}:${port}`,
+            projectName: displayName,
+            homeDir
+          });
+        });
       });
+
 
       conn.shell(
         { term: 'xterm-256color', cols: 220, rows: 50 },
@@ -505,6 +599,8 @@ function createSshTerminal(sftpConfig, projectName) {
           }
 
           sshSessions.set(wcId, stream);
+          // Watch for 'cd' commands to sync explorer path
+          // (we detect prompt changes via PWD in data stream - handled client side)
 
           stream.on('data', (data) => {
             safeSend('ssh-data', data.toString('utf8'));
@@ -517,10 +613,62 @@ function createSshTerminal(sftpConfig, projectName) {
           stream.on('close', () => {
             safeSend('ssh-closed');
             sshSessions.delete(wcId);
+            clearInterval(statTimers.get(wcId));
+            statTimers.delete(wcId);
             try { conn.end(); } catch { }
           });
         }
       );
+
+      // Start polling system stats
+      const pollTimer = setInterval(() => {
+        const c = sshConns.get(wcId);
+        if (!c) return;
+        const cmd = `free -m | awk 'NR==2{printf "%.1f/%.1f GB", $3/1024, $2/1024}'; echo '|'; df -h / | awk 'NR==2{printf "%s/%s", $3, $2}'; echo '|'; cat /proc/loadavg | awk '{print $1" "$2" "$3}'`;
+        c.exec(cmd, (err, s) => {
+          if (err) return;
+          let out = '';
+          s.on('data', d => out += d.toString());
+          s.on('close', () => {
+            const parts = out.replace(/\n/g, '').split('|');
+            if (parts.length >= 3) {
+              safeSend('ssh-sys-stats', { ram: parts[0], disk: parts[1], load: parts[2] });
+            }
+          });
+        });
+      }, 5000);
+      statTimers.set(wcId, pollTimer);
+
+      // Fetch software versions once
+      const softCmd = `
+        [ -s "$HOME/.nvm/nvm.sh" ] && \\. "$HOME/.nvm/nvm.sh" 2>/dev/null;
+        export PATH=$PATH:/usr/local/bin:$HOME/.bun/bin;
+        nv=$(node -v 2>/dev/null || echo ""); 
+        npmv=$(npm -v 2>/dev/null || echo ""); 
+        pv=$(php -r "echo PHP_VERSION;" 2>/dev/null || echo ""); 
+        mv=$(mysql -V 2>/dev/null | awk '{print $5}' | cut -d, -f1 || echo ""); 
+        pyv=$(python3 -c "import sys; print(sys.version.split(' ')[0])" 2>/dev/null || echo ""); 
+        cv=$(composer -V 2>/dev/null | awk 'NR==1{print $3}' || echo ""); 
+        echo "$nv|$npmv|$pv|$mv|$pyv|$cv";
+      `;
+      conn.exec(softCmd, (err, s) => {
+        if (err) return;
+        let out = '';
+        s.on('data', d => out += d.toString());
+        s.on('close', () => {
+          const parts = out.replace(/\n/g, '').split('|');
+          if (parts.length >= 6) {
+            safeSend('ssh-software-versions', {
+              node: parts[0] || null,
+              npm: parts[1] || null,
+              php: parts[2] || null,
+              mysql: parts[3] || null,
+              python: parts[4] || null,
+              composer: parts[5] || null
+            });
+          }
+        });
+      });
     })
     .on('error', (err) => {
       console.error('[QuickZack] SSH error:', err.message);
@@ -552,16 +700,55 @@ function createSshTerminal(sftpConfig, projectName) {
       try { stream.close(); } catch { }
       sshSessions.delete(wcId);
     }
+    const sftp = sftpClients.get(wcId);
+    if (sftp) {
+      try { sftp.end(); } catch { }
+      sftpClients.delete(wcId);
+    }
+    sshConns.delete(wcId);
+    activeExplorerPaths.delete(wcId);
+    clearInterval(statTimers.get(wcId));
+    statTimers.delete(wcId);
+    clearTimeout(pwdTimers.get(wcId));
+    pwdTimers.delete(wcId);
     try { conn.end(); } catch { }
   });
 
   return termWin;
 }
 
+// Helper: run pwd via separate exec channel and push cwd-update to renderer
+function schedulePwdCheck(wcId, webContents, delayMs = 600) {
+  clearTimeout(pwdTimers.get(wcId));
+  const timer = setTimeout(() => {
+    const conn = sshConns.get(wcId);
+    if (!conn) return;
+    conn.exec('pwd', (err, pwdStream) => {
+      if (err) return;
+      let out = '';
+      pwdStream.on('data', (d) => out += d.toString());
+      pwdStream.on('close', () => {
+        const cwd = out.trim();
+        if (cwd && cwd.startsWith('/')) {
+          try { webContents.send('ssh-cwd-update', cwd); } catch { }
+        }
+      });
+    });
+  }, delayMs);
+  pwdTimers.set(wcId, timer);
+}
+
 // Renderer → SSH: keyboard input
+// Intercept Enter key to trigger a pwd check afterwards
 ipcMain.on('ssh-input', (event, data) => {
-  const stream = sshSessions.get(event.sender.id);
+  const wcId = event.sender.id;
+  const stream = sshSessions.get(wcId);
   if (stream) stream.write(data);
+
+  // If user pressed Enter (\r or \n or \r\n) schedule a pwd lookup
+  if (data === '\r' || data === '\n' || data === '\r\n') {
+    schedulePwdCheck(wcId, event.sender, 700);
+  }
 });
 
 // Renderer → SSH: terminal resize
@@ -570,8 +757,20 @@ ipcMain.on('ssh-resize', (event, cols, rows) => {
   if (stream) stream.setWindow(rows, cols, 0, 0);
 });
 
-ipcMain.handle('open-ssh', async (_event, sftpConfig, projectName) => {
+// Explorer → Terminal: change directory in the running shell
+ipcMain.on('sftp-cd', (event, remotePath) => {
+  const stream = sshSessions.get(event.sender.id);
+  if (stream) {
+    // Write cd command into the live shell
+    stream.write(`cd ${remotePath}\r`);
+    // Schedule a pwd check to confirm
+    schedulePwdCheck(event.sender.id, event.sender, 400);
+  }
+});
+
+ipcMain.handle('open-ssh', async (_event, sftpConfig, projectName, projectPath) => {
   try {
+    if (projectPath) lastOpenedProjectPath = projectPath;
     createSshTerminal(sftpConfig, projectName || '');
     hideWindow();
     return { success: true };
@@ -579,6 +778,190 @@ ipcMain.handle('open-ssh', async (_event, sftpConfig, projectName) => {
     console.error('[QuickZack] open-ssh error:', err.message);
     return { success: false, error: err.message };
   }
+});
+
+// ─── SFTP File Explorer IPC Handlers ──────────────────────────────────────────
+
+function getSftp(wcId) {
+  const sftp = sftpClients.get(wcId);
+  if (!sftp) throw new Error('SFTP not connected');
+  return sftp;
+}
+
+// List directory
+ipcMain.handle('sftp-list', (event, remotePath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      sftp.readdir(remotePath, (err, list) => {
+        if (err) { reject(err); return; }
+        const entries = list.map(item => ({
+          name: item.filename,
+          isDir: item.attrs && (item.attrs.mode & 0o40000) !== 0,
+          size: item.attrs ? item.attrs.size : 0,
+          mtime: item.attrs ? item.attrs.mtime : 0,
+        }));
+        resolve(entries);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Download file → base64
+ipcMain.handle('sftp-download', (event, remotePath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      const chunks = [];
+      const stream = sftp.createReadStream(remotePath);
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        resolve(buf.toString('base64'));
+      });
+      stream.on('error', reject);
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Upload file from base64
+ipcMain.handle('sftp-upload', (event, remotePath, b64Content) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      const buf = Buffer.from(b64Content, 'base64');
+      const stream = sftp.createWriteStream(remotePath);
+      stream.on('close', () => resolve({ success: true }));
+      stream.on('error', reject);
+      stream.end(buf);
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Delete file
+ipcMain.handle('sftp-delete', (event, remotePath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      sftp.unlink(remotePath, (err) => {
+        if (err) {
+          // Try rmdir if it's a directory
+          sftp.rmdir(remotePath, (err2) => {
+            if (err2) reject(err); else resolve({ success: true });
+          });
+        } else {
+          resolve({ success: true });
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Create directory
+ipcMain.handle('sftp-mkdir', (event, remotePath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      sftp.mkdir(remotePath, (err) => {
+        if (err) { reject(err); return; }
+        resolve({ success: true });
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Create empty file (touch)
+ipcMain.handle('sftp-touch', (event, remotePath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      // Open for writing (O_CREAT|O_WRONLY|O_TRUNC = 0x202 = 514)
+      sftp.open(remotePath, 'w', (err, handle) => {
+        if (err) { reject(err); return; }
+        sftp.close(handle, (err2) => {
+          if (err2) { reject(err2); return; }
+          resolve({ success: true });
+        });
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Rename / move file or folder
+ipcMain.handle('sftp-rename', (event, oldPath, newPath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      sftp.rename(oldPath, newPath, (err) => {
+        if (err) { reject(err); return; }
+        resolve({ success: true });
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Zip selected paths via SSH exec, SFTP download the zip, then clean up
+ipcMain.handle('sftp-zip', (event, currentDir, remotePaths) => {
+  return new Promise((resolve, reject) => {
+    const wcId = event.sender.id;
+    const conn = sshConns.get(wcId);
+    const sftp = sftpClients.get(wcId);
+    if (!conn || !sftp) { reject(new Error('SSH not connected')); return; }
+
+    const timestamp = Date.now();
+    const archiveName = `quickzack_${timestamp}.tar.gz`;
+    const archivePath = `/tmp/${archiveName}`;
+
+    // Build quoted path list relative to currentDir
+    const relPaths = remotePaths.map(p => {
+      const rel = p.replace(currentDir.replace(/\/?$/, '/'), '');
+      return `"${rel}"`;
+    }).join(' ');
+
+    const tarCmd = `cd "${currentDir}" && tar -czf "${archivePath}" ${relPaths}`;
+    console.log('[QuickZack] TAR CMD:', tarCmd);
+
+    conn.exec(tarCmd, (err, execStream) => {
+      if (err) { reject(err); return; }
+
+      let stderr = '';
+      // Read stdout to prevent buffer from filling and hanging the process
+      execStream.on('data', (d) => { /* ignore stdout */ });
+      execStream.stderr.on('data', d => stderr += d.toString());
+      execStream.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`archive failed (code ${code}): ${stderr.trim() || 'tar not available on server'}`));
+          return;
+        }
+
+        // Download the tar via SFTP
+        const chunks = [];
+        const dl = sftp.createReadStream(archivePath);
+        dl.on('data', chunk => chunks.push(chunk));
+        dl.on('end', () => {
+          const b64 = Buffer.concat(chunks).toString('base64');
+          // Clean up remote temp archive
+          sftp.unlink(archivePath, () => { });
+          resolve({ success: true, data: b64, filename: archiveName });
+        });
+        dl.on('error', reject);
+      });
+    });
+  });
 });
 
 // ─── App Lifecycle ───────────────────────────────────────────────────────────
@@ -649,6 +1032,48 @@ function watchConfig() {
   console.log('[QuickZack] Watching config for changes:', CONFIG_PATH);
 }
 
+// ─── Git Commit Scheduler ────────────────────────────────────────────────────
+
+function startRandomScheduler() {
+
+  const waitMinutes = [10, 15, 20, 30, 45, 60];
+  const selectedMinutes = waitMinutes[Math.floor(Math.random() * waitMinutes.length)];
+  const delayMs = selectedMinutes * 60 * 1000;
+
+  setTimeout(async () => {
+    const dirtyProjects = projectCache.filter(p => p.gitStatus && p.gitStatus.isDirty);
+
+    if (dirtyProjects.length > 0) {
+
+      let project = dirtyProjects.find(p => p.path === lastOpenedProjectPath);
+
+      if (!project) {
+        project = dirtyProjects[Math.floor(Math.random() * dirtyProjects.length)];
+      }
+
+      if (Notification.isSupported()) {
+        const branchString = project.gitStatus.branch ? ` (${project.gitStatus.branch})` : '';
+        const notif = new Notification({
+          title: 'Commit Reminder! ⚡',
+          body: `Your project "${project.name}"${branchString} has uncommitted changes. Please commit today!`,
+          icon: path.join(__dirname, 'tray-icon.png'),
+          silent: false
+        });
+
+        notif.on('click', () => {
+          showWindow();
+        });
+
+        notif.show();
+      }
+    }
+
+    startRandomScheduler();
+  }, delayMs);
+
+  console.log(`[QuickZack] Next git reminder scheduled in ${selectedMinutes} minutes.`);
+}
+
 app.whenReady().then(async () => {
   // Hide from dock on macOS — this is a tray-only app
   if (process.platform === 'darwin') {
@@ -671,6 +1096,29 @@ app.whenReady().then(async () => {
 
   // Watch config for live reload
   watchConfig();
+
+  // Start Git Scheduler
+  startRandomScheduler();
+
+  // Initial check for updates and start background updater scheduler
+  autoUpdater.checkForUpdates();
+  setInterval(() => {
+    autoUpdater.checkForUpdates();
+  }, 2 * 60 * 60 * 1000);
+
+  // Show starting notification
+  if (Notification.isSupported()) {
+    const startNotification = new Notification({
+      title: 'QuickZack',
+      body: 'App is started in system tray',
+      icon: path.join(__dirname, 'tray-icon.png'),
+      silent: false
+    });
+    startNotification.on('click', () => {
+      showWindow();
+    });
+    startNotification.show();
+  }
 
   console.log('[QuickZack] Ready. Press', config.shortcut || 'Alt+Space', 'to open.');
 });

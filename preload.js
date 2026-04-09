@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   getConfig: () => ipcRenderer.invoke('get-config'),
 
   // Open SSH terminal using sftp.json config
-  openSsh: (sftpConfig, projectName) => ipcRenderer.invoke('open-ssh', sftpConfig, projectName),
+  openSsh: (sftpConfig, projectName, projectPath) => ipcRenderer.invoke('open-ssh', sftpConfig, projectName, projectPath),
 
   // Open native local terminal in the project directory
   openTerminal: (projectPath) => ipcRenderer.invoke('open-terminal', projectPath),

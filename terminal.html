@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,58 +11,161 @@
   <script src="node_modules/xterm/lib/xterm.js"></script>
   <script src="node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:          #0d1117;
-      --header-bg:   rgba(255,255,255,0.035);
-      --border:      rgba(255,255,255,0.08);
-      --teal:        #2dd4bf;
-      --teal-dim:    rgba(45,212,191,0.15);
-      --red:         #f87171;
-      --green:       #34d399;
-      --text:        #e6edf3;
-      --muted:       #6e7681;
-      --accent:      #8b5cf6;
-      --font:        'Inter', -apple-system, sans-serif;
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
-      width: 100%; height: 100%;
+    :root {
+      --bg: #0d1117;
+      --panel-bg: #0f1318;
+      --header-bg: rgba(255, 255, 255, 0.035);
+      --border: rgba(255, 255, 255, 0.08);
+      --teal: #2dd4bf;
+      --teal-dim: rgba(45, 212, 191, 0.15);
+      --red: #f87171;
+      --green: #34d399;
+      --text: #e6edf3;
+      --muted: #6e7681;
+      --accent: #8b5cf6;
+      --accent-dim: rgba(139, 92, 246, 0.15);
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --font: 'Inter', -apple-system, sans-serif;
+      --explorer-w: 300px;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
       background: var(--bg);
       overflow: hidden;
       font-family: var(--font);
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Header ─────────────────────────────────────────────────────── */
+    /* ── App Layout ─────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      color: var(--text);
+      line-height: var(--xterm-lh, 1.45);
+    }
+
+    /* Terminal Status Bar */
+    #terminal-status-bar {
+      height: 26px;
+      background: rgba(255, 255, 255, 0.02);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--muted);
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .stat-item:hover {
+      color: var(--text);
+    }
+
+    .stat-item svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    #stat-scroll-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .stat-scroll-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      height: 100%;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .stat-scroll-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
     #header {
       display: flex;
       align-items: center;
       gap: 10px;
-      height: 38px;
+      height: 42px;
       padding: 0 16px;
       background: var(--header-bg);
       border-bottom: 1px solid var(--border);
       -webkit-app-region: drag;
       user-select: none;
+      flex-shrink: 0;
     }
 
     #status-dot {
       flex-shrink: 0;
-      width: 8px; height: 8px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--muted);
       transition: background 0.3s, box-shadow 0.3s;
     }
-    #status-dot.connecting { background: #fbbf24; animation: pulse 1.2s infinite; }
-    #status-dot.connected  { background: var(--green); box-shadow: 0 0 7px rgba(52,211,153,0.6); }
-    #status-dot.error      { background: var(--red);   box-shadow: 0 0 7px rgba(248,113,113,0.5); }
-    #status-dot.closed     { background: var(--muted); }
+
+    #status-dot.connecting {
+      background: #fbbf24;
+      animation: pulse 1.2s infinite;
+    }
+
+    #status-dot.connected {
+      background: var(--green);
+      box-shadow: 0 0 7px rgba(52, 211, 153, 0.6);
+    }
+
+    #status-dot.error {
+      background: var(--red);
+      box-shadow: 0 0 7px rgba(248, 113, 113, 0.5);
+    }
+
+    #status-dot.closed {
+      background: var(--muted);
+    }
 
     @keyframes pulse {
-      0%,100% { opacity: 1; }
-      50%      { opacity: 0.4; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
     }
 
     #conn-label {
@@ -84,148 +188,2188 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      -webkit-app-region: no-drag;
     }
 
-    /* ── Terminal container ───────────────────────────────────────── */
+    /* Toggle explorer button */
+    #btn-toggle-explorer {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--font);
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    #btn-toggle-explorer:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    #btn-toggle-explorer.active {
+      border-color: rgba(139, 92, 246, 0.6);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* Sync path button */
+    #btn-sync-path {
+      -webkit-app-region: no-drag;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--font);
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    #btn-sync-path:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: var(--teal-dim);
+    }
+
+    #btn-sync-path.active {
+      border-color: rgba(45, 212, 191, 0.6);
+      color: var(--teal);
+      background: var(--teal-dim);
+    }
+
+    /* Sync indicator dot on explorer header */
+    #sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.2s, box-shadow 0.2s;
+      display: none;
+    }
+
+    #sync-dot.on {
+      display: block;
+      background: var(--teal);
+      box-shadow: 0 0 5px rgba(45, 212, 191, 0.7);
+    }
+
+    /* ── Body: Terminal + Explorer ───────────────────────────────── */
+    #body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Terminal ────────────────────────────────────────────────── */
     #terminal-wrap {
-      width: 100%;
-      height: calc(100% - 38px);
+      flex: 1;
+      min-width: 0;
       padding: 4px 6px 4px 8px;
+      transition: all 0.25s ease;
+      overflow: hidden;
     }
 
     #terminal-wrap .xterm {
       height: 100%;
     }
 
-    /* Scrollbar */
-    .xterm-viewport::-webkit-scrollbar { width: 6px; }
+    .xterm-viewport::-webkit-scrollbar {
+      width: 6px;
+    }
+
     .xterm-viewport::-webkit-scrollbar-thumb {
-      background: rgba(139,92,246,0.35);
+      background: rgba(139, 92, 246, 0.35);
       border-radius: 99px;
     }
+
+    /* ── File Explorer Panel ─────────────────────────────────────── */
+    #file-explorer {
+      width: var(--explorer-w);
+      min-width: var(--explorer-w);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-bg);
+      overflow: hidden;
+      transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
+    }
+
+    #file-explorer.hidden {
+      width: 0;
+      min-width: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Explorer Header */
+    #explorer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #explorer-path {
+      flex: 1;
+      font-size: 10px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      direction: rtl;
+      text-align: left;
+    }
+
+    #explorer-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .explorer-icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .explorer-icon-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .explorer-icon-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Upload drop zone */
+    #upload-zone {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      border-top: none;
+      flex-shrink: 0;
+    }
+
+    #upload-btn {
+      flex: 1;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px dashed rgba(139, 92, 246, 0.4);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 6px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    #upload-btn:hover {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.7);
+    }
+
+    #upload-btn.drag-over {
+      background: rgba(139, 92, 246, 0.25);
+      border-color: var(--accent);
+      border-style: solid;
+    }
+
+    #upload-btn svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    #upload-input {
+      display: none;
+    }
+
+    /* File list */
+    #file-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+    }
+
+    #file-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #file-list::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.3);
+      border-radius: 99px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: background 0.1s;
+      position: relative;
+      user-select: none;
+    }
+
+    .file-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .file-item:hover .file-actions {
+      opacity: 1;
+    }
+
+    .file-icon {
+      flex-shrink: 0;
+      font-size: 14px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .file-name {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-name.is-dir {
+      color: var(--blue);
+      font-weight: 500;
+    }
+
+    .file-size {
+      font-size: 10px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .file-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    }
+
+    .file-action-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 3px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .file-action-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .file-action-btn.danger:hover {
+      color: var(--red);
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    .file-action-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Breadcrumb nav */
+    #breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    #breadcrumb::-webkit-scrollbar {
+      display: none;
+    }
+
+    .breadcrumb-item {
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.12s, background 0.12s;
+    }
+
+    .breadcrumb-item:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .breadcrumb-item.active {
+      color: var(--text);
+      font-weight: 500;
+      cursor: default;
+    }
+
+    .breadcrumb-sep {
+      color: var(--muted);
+      opacity: 0.4;
+      font-size: 10px;
+    }
+
+    /* Status bar */
+    #explorer-status {
+      padding: 5px 10px;
+      font-size: 10px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Loading state */
+    .explorer-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(139, 92, 246, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Empty state */
+    .explorer-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 30px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      opacity: 0.6;
+    }
+
+    /* ── File Editor Modal ───────────────────────────────────────── */
+    #editor-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    #editor-modal.open {
+      display: flex;
+    }
+
+    #editor-box {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+      /* VSCode generic background */
+    }
+
+    @keyframes modal-in {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    #editor-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #editor-filename {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #editor-status-msg {
+      font-size: 11px;
+      color: var(--green);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #editor-status-msg.show {
+      opacity: 1;
+    }
+
+    .editor-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .editor-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .editor-btn.save-btn {
+      border-color: rgba(52, 211, 153, 0.4);
+      color: var(--green);
+      background: rgba(52, 211, 153, 0.08);
+    }
+
+    .editor-btn.save-btn:hover {
+      border-color: rgba(52, 211, 153, 0.8);
+      background: rgba(52, 211, 153, 0.18);
+    }
+
+    #editor-textarea {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      background: #1e1e1e;
+    }
+
+    #editor-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* Progress bar at top for upload */
+    #upload-progress {
+      display: none;
+      position: fixed;
+      top: 42px;
+      left: 0;
+      right: 0;
+      z-index: 200;
+    }
+
+    #upload-progress.show {
+      display: block;
+    }
+
+    #upload-progress-bar {
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--teal));
+      width: 0%;
+      transition: width 0.2s ease;
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
+    }
+
+    /* Toast notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: #1c2128;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toast-in 0.25s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    .toast.success {
+      border-color: rgba(52, 211, 153, 0.4);
+    }
+
+    .toast.error {
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+
+    @keyframes toast-in {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── Inline name input (create folder/file) ──────────────────── */
+    #inline-create {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: rgba(139, 92, 246, 0.07);
+      border-bottom: 1px solid rgba(139, 92, 246, 0.25);
+      flex-shrink: 0;
+    }
+
+    #inline-create.show {
+      display: flex;
+    }
+
+    #inline-create-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    #inline-create-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+    }
+
+    #inline-create-input:focus {
+      border-color: rgba(139, 92, 246, 0.8);
+    }
+
+    .inline-create-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .inline-create-btn.confirm {
+      border-color: rgba(52, 211, 153, 0.4);
+      color: var(--green);
+    }
+
+    .inline-create-btn.confirm:hover {
+      background: rgba(52, 211, 153, 0.12);
+      border-color: rgba(52, 211, 153, 0.7);
+    }
+
+    .inline-create-btn.cancel:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+
+    /* ── Selection Mode ──────────────────────────────────────────── */
+    .file-item .item-checkbox {
+      display: none;
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    body.select-mode .file-item .item-checkbox {
+      display: block;
+    }
+
+    body.select-mode .file-item {
+      cursor: default;
+    }
+
+    body.select-mode .file-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    body.select-mode .file-item.selected {
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    body.select-mode .file-item.selected::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Select-mode toggle btn */
+    #btn-select-mode.active {
+      border-color: rgba(251, 191, 36, 0.5);
+      color: var(--yellow);
+      background: rgba(251, 191, 36, 0.08);
+    }
+
+    /* ── Selection toolbar (appears when items are selected) ──────── */
+    #selection-toolbar {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: rgba(251, 191, 36, 0.06);
+      border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+      flex-shrink: 0;
+    }
+
+    #selection-toolbar.show {
+      display: flex;
+    }
+
+    #selection-count {
+      font-size: 11px;
+      color: var(--yellow);
+      font-weight: 500;
+      flex: 1;
+    }
+
+    #btn-zip-selected {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: var(--yellow);
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    #btn-zip-selected:hover {
+      background: rgba(251, 191, 36, 0.2);
+      border-color: rgba(251, 191, 36, 0.7);
+    }
+
+    #btn-zip-selected svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    #btn-clear-selection {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+
+    #btn-clear-selection:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Context Menu */
+    .context-menu {
+      position: absolute;
+      background: #1c2128;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 1000;
+      min-width: 170px;
+      font-family: var(--font);
+    }
+
+    .context-menu.show {
+      display: block;
+    }
+
+    .context-menu-item {
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+
+    .context-menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .context-menu-item svg {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+    }
+
+    .context-menu-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.07);
+      margin: 3px 5px;
+    }
+
+    .context-menu-item.danger {
+      color: #f87171;
+    }
+
+    .context-menu-item.danger:hover {
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    /* ── Mini Modal (Rename / Properties) ── */
+    .mini-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mini-modal.open {
+      display: flex;
+    }
+
+    .mini-modal-box {
+      background: #1c2128;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      min-width: 340px;
+      max-width: 480px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      font-family: var(--font);
+    }
+
+    .mini-modal-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .mini-modal-box input[type="text"] {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 10px;
+      outline: none;
+      box-sizing: border-box;
+      margin-bottom: 14px;
+      transition: border-color 0.15s;
+    }
+
+    .mini-modal-box input[type="text"]:focus {
+      border-color: #58a6ff;
+    }
+
+    .mini-modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .mini-modal-actions button {
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      transition: opacity 0.15s;
+    }
+
+    .mini-modal-actions button.primary {
+      background: rgba(88, 166, 255, 0.15);
+      border-color: rgba(88, 166, 255, 0.4);
+      color: #58a6ff;
+    }
+
+    .mini-modal-actions button:hover {
+      opacity: 0.8;
+    }
+
+    .props-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px 16px;
+      font-size: 12px;
+      margin-bottom: 14px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .props-label { color: var(--muted); white-space: nowrap; }
+    .props-value  { color: var(--text); word-break: break-all; }
   </style>
 </head>
+
 <body>
+  <div id="app">
 
-  <div id="header">
-    <div id="status-dot" class="connecting"></div>
-    <span id="conn-label">Connecting…</span>
-    <span id="conn-status"></span>
-    <div id="brand">⚡ QuickZack SSH</div>
+    <!-- Header -->
+    <div id="header">
+      <div id="status-dot" class="connecting"></div>
+      <span id="conn-label">Connecting…</span>
+      <span id="conn-status"></span>
+      <button id="btn-toggle-explorer" class="active" title="Toggle File Explorer">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
+        </svg>
+        Explorer
+      </button>
+      <button id="btn-sync-path" class="active" title="Sync terminal path with explorer (click to toggle)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Sync Path
+      </button>
+      <div id="brand">⚡ QuickZack SSH</div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div id="upload-progress">
+      <div id="upload-progress-bar"></div>
+    </div>
+
+    <!-- Body: Terminal + Explorer -->
+    <div id="body">
+
+      <!-- Terminal Area -->
+      <div id="terminal-wrap"
+        style="flex: 1; padding-left: 5px; position:relative; overflow:hidden; display:flex; flex-direction:column;">
+        <div id="terminal" style="flex:1; min-height:0;"></div>
+        <div id="terminal-status-bar" style="padding: 0; justify-content: space-between;">
+          <button id="stat-scroll-left" class="stat-scroll-btn">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div id="stat-scroll-container"
+            style="display:flex; flex:1; overflow-x:auto; scroll-behavior:smooth; align-items:center;">
+            <div style="display:flex; gap:20px; align-items:center; padding: 0 10px; flex-shrink: 0;">
+              <div class="stat-item" title="RAM Usage">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+                <span id="stat-ram">RAM: --/--</span>
+              </div>
+              <div class="stat-item" title="Disk Usage">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                <span id="stat-disk">Disk: --/--</span>
+              </div>
+              <div class="stat-item" title="System Load Average">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span id="stat-load">Load: --</span>
+              </div>
+            </div>
+
+            <div id="stat-software"
+              style="display:flex; gap:12px; margin-left:10px; padding: 0 15px; border-left:1px solid rgba(255,255,255,0.08); flex-shrink: 0;">
+              <!-- Software items injected here -->
+            </div>
+          </div>
+
+          <button id="stat-scroll-right" class="stat-scroll-btn">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- File Explorer Panel -->
+      <div id="file-explorer">
+
+        <!-- Explorer Header -->
+        <div id="explorer-header">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"
+            style="color:#60a5fa;flex-shrink:0">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          <span id="explorer-title">Files</span>
+          <div id="sync-dot" title="Path sync active"></div>
+          <button class="explorer-icon-btn" id="btn-home" title="Go to home directory">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </button>
+          <button class="explorer-icon-btn" id="btn-refresh-files" title="Refresh">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <button class="explorer-icon-btn" id="btn-new-folder" title="Create new folder">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+          <button class="explorer-icon-btn" id="btn-new-file" title="Create new file">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 13h6m-3-3v6m9-13v16a2 2 0 01-2 2H6a2 2 0 01-2-2V8l6-6h8a2 2 0 012 2z" />
+            </svg>
+          </button>
+          <button class="explorer-icon-btn" id="btn-select-mode" title="Toggle selection mode">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Inline Create Bar -->
+        <div id="inline-create">
+          <span id="inline-create-icon">📁</span>
+          <input id="inline-create-input" type="text" placeholder="folder-name" autocomplete="off" spellcheck="false" />
+          <button class="inline-create-btn confirm" id="btn-inline-confirm" title="Create">✓</button>
+          <button class="inline-create-btn cancel" id="btn-inline-cancel" title="Cancel">✕</button>
+        </div>
+
+        <!-- Selection Toolbar -->
+        <div id="selection-toolbar">
+          <span id="selection-count">0 selected</span>
+          <button id="btn-zip-selected">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Archive & Download
+          </button>
+          <button id="btn-clear-selection">✕ Clear</button>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div id="breadcrumb"></div>
+
+        <!-- Upload Zone -->
+        <div id="upload-zone">
+          <button id="upload-btn" title="Click to upload or drag & drop files here">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Upload File
+          </button>
+          <input type="file" id="upload-input" multiple />
+        </div>
+
+        <!-- File List -->
+        <div id="file-list"></div>
+
+        <!-- Status Bar -->
+        <div id="explorer-status">Not connected</div>
+
+      </div>
+    </div>
   </div>
 
-  <div id="terminal-wrap">
-    <div id="terminal" style="height:100%;"></div>
+  <!-- File Editor Modal -->
+  <div id="editor-modal">
+    <div id="editor-box">
+      <div id="editor-header">
+        <span id="editor-filename">file.txt</span>
+        <span id="editor-status-msg">✓ Saved!</span>
+        <button class="editor-btn" id="btn-editor-close">✕ Close</button>
+        <button class="editor-btn save-btn" id="btn-editor-save">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          Save & Upload
+        </button>
+      </div>
+      <div id="editor-textarea"></div>
+      <div id="editor-footer">
+        <span id="editor-lines">0 lines</span>
+        <span>Ctrl+S to save</span>
+      </div>
+    </div>
   </div>
 
-<script>
-// ── xterm setup ───────────────────────────────────────────────────────────
-const terminal = new Terminal({
-  theme: {
-    background:          '#0d1117',
-    foreground:          '#e6edf3',
-    cursor:              '#58a6ff',
-    cursorAccent:        '#0d1117',
-    selectionBackground: 'rgba(88,166,255,0.25)',
-    black:    '#484f58', brightBlack:   '#6e7681',
-    red:      '#ff7b72', brightRed:     '#ffa198',
-    green:    '#3fb950', brightGreen:   '#56d364',
-    yellow:   '#d29922', brightYellow:  '#e3b341',
-    blue:     '#58a6ff', brightBlue:    '#79c0ff',
-    magenta:  '#bc8cff', brightMagenta: '#d2a8ff',
-    cyan:     '#39c5cf', brightCyan:    '#56d4dd',
-    white:    '#b1bac4', brightWhite:   '#f0f6fc',
-  },
-  fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace',
-  fontSize: 13,
-  lineHeight: 1.45,
-  cursorBlink: true,
-  cursorStyle: 'bar',
-  allowTransparency: true,
-  scrollback: 5000,
-});
+  <!-- Toast container -->
+  <div id="toast-container"></div>
 
-const fitAddon = new FitAddon.FitAddon();
-terminal.loadAddon(fitAddon);
-terminal.open(document.getElementById('terminal'));
-fitAddon.fit();
+  <!-- Context Menu — appears when right-clicking a file or folder item -->
+  <div id="explorer-context-menu" class="context-menu">
+    <!-- Folder only -->
+    <div class="context-menu-item" id="ctx-open">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"/></svg>
+      Open
+    </div>
+    <!-- File only -->
+    <div class="context-menu-item" id="ctx-edit">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      Edit
+    </div>
+    <div class="context-menu-divider"></div>
+    <!-- Both -->
+    <div class="context-menu-item" id="ctx-rename">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+      Rename
+    </div>
+    <div class="context-menu-item" id="ctx-copy-path">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      Copy Path
+    </div>
+    <div class="context-menu-divider"></div>
+    <!-- File only -->
+    <div class="context-menu-item" id="ctx-download">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      Download
+    </div>
+    <div class="context-menu-divider"></div>
+    <!-- Both -->
+    <div class="context-menu-item danger" id="ctx-delete">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      Delete
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" id="ctx-properties">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Properties
+    </div>
+  </div>
 
-// ── Resize observer ───────────────────────────────────────────────────────
-const ro = new ResizeObserver(() => {
-  try {
+  <!-- Rename Modal -->
+  <div id="rename-modal" class="mini-modal">
+    <div class="mini-modal-box">
+      <div class="mini-modal-title">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+        Rename
+      </div>
+      <input id="rename-input" type="text" autocomplete="off" spellcheck="false" />
+      <div class="mini-modal-actions">
+        <button id="btn-rename-cancel">Cancel</button>
+        <button id="btn-rename-confirm" class="primary">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Properties Modal -->
+  <div id="properties-modal" class="mini-modal">
+    <div class="mini-modal-box">
+      <div class="mini-modal-title">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Properties
+      </div>
+      <div id="properties-content" class="props-grid"></div>
+      <div class="mini-modal-actions">
+        <button id="btn-properties-close" class="primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./node_modules/monaco-editor/min/vs/loader.js"></script>
+  <script>
+    // Configure Monaco
+    require.config({ paths: { 'vs': './node_modules/monaco-editor/min/vs' } });
+
+    // Disable web workers to avoid relative path data URI issues, falling back to same thread
+    window.MonacoEnvironment = { getWorker: () => null };
+    // ── xterm setup ───────────────────────────────────────────────────────────
+    const terminal = new Terminal({
+      theme: {
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#58a6ff',
+        cursorAccent: '#0d1117',
+        selectionBackground: 'rgba(88,166,255,0.25)',
+        black: '#484f58', brightBlack: '#6e7681',
+        red: '#ff7b72', brightRed: '#ffa198',
+        green: '#3fb950', brightGreen: '#56d364',
+        yellow: '#d29922', brightYellow: '#e3b341',
+        blue: '#58a6ff', brightBlue: '#79c0ff',
+        magenta: '#bc8cff', brightMagenta: '#d2a8ff',
+        cyan: '#39c5cf', brightCyan: '#56d4dd',
+        white: '#b1bac4', brightWhite: '#f0f6fc',
+      },
+      fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace',
+      fontSize: 13,
+      lineHeight: 1.45,
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      allowTransparency: true,
+      scrollback: 5000,
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+    terminal.open(document.getElementById('terminal'));
     fitAddon.fit();
-    window.sshBridge.resize(terminal.cols, terminal.rows);
-  } catch {}
-});
-ro.observe(document.getElementById('terminal-wrap'));
 
-// ── DOM refs ──────────────────────────────────────────────────────────────
-const statusDot  = document.getElementById('status-dot');
-const connLabel  = document.getElementById('conn-label');
-const connStatus = document.getElementById('conn-status');
+    const ro = new ResizeObserver(() => {
+      try {
+        fitAddon.fit();
+        window.sshBridge.resize(terminal.cols, terminal.rows);
+      } catch { }
+    });
+    ro.observe(document.getElementById('terminal-wrap'));
 
-// ── IPC → xterm ───────────────────────────────────────────────────────────
-window.sshBridge.onData((data) => {
-  terminal.write(data);
-});
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const statusDot = document.getElementById('status-dot');
+    const connLabel = document.getElementById('conn-label');
+    const connStatus = document.getElementById('conn-status');
+    const fileExplorer = document.getElementById('file-explorer');
+    const fileList = document.getElementById('file-list');
+    const breadcrumb = document.getElementById('breadcrumb');
+    const explorerStatus = document.getElementById('explorer-status');
+    const uploadBtn = document.getElementById('upload-btn');
+    const uploadInput = document.getElementById('upload-input');
+    const uploadProgress = document.getElementById('upload-progress');
+    const uploadProgressBar = document.getElementById('upload-progress-bar');
+    const btnToggle = document.getElementById('btn-toggle-explorer');
+    const btnHome = document.getElementById('btn-home');
+    const btnRefresh = document.getElementById('btn-refresh-files');
+    const btnNewFolder = document.getElementById('btn-new-folder');
+    const btnNewFile = document.getElementById('btn-new-file');
+    const btnSelectMode = document.getElementById('btn-select-mode');
+    const inlineCreate = document.getElementById('inline-create');
+    const inlineCreateIcon = document.getElementById('inline-create-icon');
+    const inlineCreateInput = document.getElementById('inline-create-input');
+    const btnInlineConfirm = document.getElementById('btn-inline-confirm');
+    const btnInlineCancel = document.getElementById('btn-inline-cancel');
+    const selectionToolbar = document.getElementById('selection-toolbar');
+    const selectionCount = document.getElementById('selection-count');
+    const btnZipSelected = document.getElementById('btn-zip-selected');
+    const btnClearSelection = document.getElementById('btn-clear-selection');
+    const editorModal = document.getElementById('editor-modal');
+    const editorTextarea = document.getElementById('editor-textarea');
+    const editorFilename = document.getElementById('editor-filename');
+    const editorLines = document.getElementById('editor-lines');
+    let monacoInstance = null;
 
-window.sshBridge.onConnected((info) => {
-  statusDot.className   = 'connected';
-  connLabel.textContent = info.label || 'Connected';
-  if (info.projectName) {
-    document.title = `⚡ ${info.projectName} — QuickZack`;
-  }
-  connStatus.textContent = '';
-});
+    require(['vs/editor/editor.main'], function () {
+      monacoInstance = monaco.editor.create(document.getElementById('editor-textarea'), {
+        value: "",
+        language: "javascript",
+        theme: "vs-dark",
+        automaticLayout: true,
+        fontSize: 14,
+        fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+        minimap: { enabled: true },
+        padding: { top: 16 }
+      });
 
-window.sshBridge.onError((msg) => {
-  statusDot.className    = 'error';
-  connLabel.textContent  = 'Connection Failed';
-  connStatus.textContent = msg;
-  terminal.write(`\r\n\x1b[31m✖ ${msg}\x1b[0m\r\n`);
-});
+      monacoInstance.onDidChangeModelContent(() => {
+        updateEditorLines();
+      });
 
-window.sshBridge.onClosed(() => {
-  statusDot.className    = 'closed';
-  connLabel.textContent  = 'Disconnected';
-  connStatus.textContent = '';
-  terminal.write('\r\n\x1b[90m[Connection closed]\x1b[0m\r\n');
-});
+      monacoInstance.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        btnEditorSave.click();
+      });
+    });
+    const editorStatusMsg = document.getElementById('editor-status-msg');
+    const btnEditorSave = document.getElementById('btn-editor-save');
+    const btnEditorClose = document.getElementById('btn-editor-close');
+    const toastContainer = document.getElementById('toast-container');
+    const contextMenu = document.getElementById('explorer-context-menu');
+    const statRam = document.getElementById('stat-ram');
+    const statDisk = document.getElementById('stat-disk');
+    const statLoad = document.getElementById('stat-load');
 
-// ── xterm → IPC (keystrokes) ──────────────────────────────────────────────
-terminal.onData((data) => {
-  window.sshBridge.sendInput(data);
-});
+    // ── State ─────────────────────────────────────────────────────────────────
+    let isConnected = false;
+    let currentPath = '/';
+    let pathHistory = ['/'];
+    let currentEditFile = null;
+    let explorerVisible = true;
+    let syncPathEnabled = true;   // Sync terminal CWD ↔ explorer path
+    let lastCwdFromTerminal = '/'; // Last path received from terminal
+    let navigatingFromTerminal = false; // flag to avoid loop
 
-terminal.onResize(({ cols, rows }) => {
-  window.sshBridge.resize(cols, rows);
-});
+    let selectModeActive = false;
+    let selectedPaths = new Set();   // Set of remote full paths
+    let inlineCreateType = null;        // 'folder' | 'file'
 
-// ── Copy & Paste ──────────────────────────────────────────────────────────
-
-terminal.onSelectionChange(() => {
-  if (terminal.hasSelection()) {
-    const text = terminal.getSelection();
-    navigator.clipboard.writeText(text).catch(console.error);
-  }
-});
-
-
-window.addEventListener('contextmenu', async (e) => {
-  e.preventDefault();
-  
-  try {
-    const text = await navigator.clipboard.readText();
-    if (text) {
-      window.sshBridge.sendInput(text);
+    // ── Toast Helper ──────────────────────────────────────────────────────────
+    function showToast(msg, type = 'info', duration = 3000) {
+      const icons = { success: '✓', error: '✕', info: 'ℹ' };
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<span style="color:${type === 'success' ? '#34d399' : type === 'error' ? '#f87171' : '#8b5cf6'}">${icons[type] || '•'}</span> ${msg}`;
+      toastContainer.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, duration);
     }
-  } catch (err) {
-    console.error('Clipboard paste error:', err);
-  }
-});
 
-// Focus terminal by default
-terminal.focus();
-</script>
+    // ── Sync Toggle ───────────────────────────────────────────────────────────
+    const btnSyncPath = document.getElementById('btn-sync-path');
+    const syncDot = document.getElementById('sync-dot');
+
+    function updateSyncUI() {
+      btnSyncPath.classList.toggle('active', syncPathEnabled);
+      syncDot.classList.toggle('on', syncPathEnabled);
+      btnSyncPath.title = syncPathEnabled
+        ? 'Path Sync ON — click to disable'
+        : 'Path Sync OFF — click to enable';
+    }
+
+    btnSyncPath.addEventListener('click', () => {
+      syncPathEnabled = !syncPathEnabled;
+      updateSyncUI();
+      showToast(syncPathEnabled ? '🔗 Path sync enabled' : '🔇 Path sync disabled',
+        syncPathEnabled ? 'success' : 'info', 2000);
+    });
+
+    updateSyncUI();
+
+    // ── Upload Progress ───────────────────────────────────────────────────────
+    function setProgress(pct) {
+      if (pct >= 100) {
+        uploadProgressBar.style.width = '100%';
+        setTimeout(() => {
+          uploadProgress.classList.remove('show');
+          uploadProgressBar.style.width = '0%';
+        }, 400);
+      } else {
+        uploadProgress.classList.add('show');
+        uploadProgressBar.style.width = `${pct}%`;
+      }
+    }
+
+    // ── Explorer Toggle ───────────────────────────────────────────────────────
+    btnToggle.addEventListener('click', () => {
+      explorerVisible = !explorerVisible;
+      fileExplorer.classList.toggle('hidden', !explorerVisible);
+      btnToggle.classList.toggle('active', explorerVisible);
+      setTimeout(() => { try { fitAddon.fit(); } catch { } }, 280);
+    });
+
+    // ── Breadcrumb ────────────────────────────────────────────────────────────
+    function renderBreadcrumb(remotePath) {
+      breadcrumb.innerHTML = '';
+      const parts = remotePath === '/' ? [''] : remotePath.split('/').filter(Boolean);
+
+      // Root
+      const root = document.createElement('span');
+      root.className = 'breadcrumb-item';
+      root.textContent = '/';
+      root.addEventListener('click', () => navigateTo('/'));
+      breadcrumb.appendChild(root);
+
+      parts.forEach((part, i) => {
+        const sep = document.createElement('span');
+        sep.className = 'breadcrumb-sep';
+        sep.textContent = '›';
+        breadcrumb.appendChild(sep);
+
+        const crumb = document.createElement('span');
+        crumb.className = 'breadcrumb-item' + (i === parts.length - 1 ? ' active' : '');
+        crumb.textContent = part;
+        if (i < parts.length - 1) {
+          const navPath = '/' + parts.slice(0, i + 1).join('/');
+          crumb.addEventListener('click', () => navigateTo(navPath));
+        }
+        breadcrumb.appendChild(crumb);
+      });
+
+      breadcrumb.scrollLeft = breadcrumb.scrollWidth;
+    }
+
+    // ── Format file size ──────────────────────────────────────────────────────
+    function formatSize(bytes) {
+      if (bytes == null) return '';
+      if (bytes < 1024) return bytes + 'B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'K';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + 'M';
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + 'G';
+    }
+
+    // ── File Icon ─────────────────────────────────────────────────────────────
+    function getFileIcon(name, isDir) {
+      if (isDir) {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="#60a5fa" stroke="none"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+      }
+
+      const ext = name.split('.').pop().toLowerCase();
+
+      // Known devicon paths
+      const devIcons = {
+        html: 'html5/html5-original.svg',
+        htm: 'html5/html5-original.svg',
+        css: 'css3/css3-original.svg',
+        js: 'javascript/javascript-original.svg',
+        ts: 'typescript/typescript-original.svg',
+        jsx: 'react/react-original.svg',
+        tsx: 'react/react-original.svg',
+        php: 'php/php-original.svg',
+        py: 'python/python-original.svg',
+        json: 'json/json-original.svg',
+        go: 'go/go-original.svg',
+        java: 'java/java-original.svg',
+        rb: 'ruby/ruby-original.svg',
+        rust: 'rust/rust-original.svg',
+        mysql: 'mysql/mysql-original.svg',
+        sql: 'mysql/mysql-original.svg',
+        md: 'markdown/markdown-original.svg'
+      };
+
+      if (devIcons[ext]) {
+        return `<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${devIcons[ext]}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle" />`;
+      }
+
+      if (ext === 'pdf') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" stroke="none" style="vertical-align:middle"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg>`;
+      }
+
+      if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" style="vertical-align:middle"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
+      }
+
+      if (['mp4', 'mov', 'avi'].includes(ext)) {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" style="vertical-align:middle"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>`;
+      }
+
+      if (['zip', 'rar', 'gz', 'tar'].includes(ext)) {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" style="vertical-align:middle"><path d="M21 8v13H3V8"/><path d="M21 3v5H3V3"/><path d="M10 8v5M14 8v5M10 13h4M10 3v5M14 3v5"/></svg>`;
+      }
+
+      // Default generic file icon
+      return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6e7681" stroke-width="2" style="vertical-align:middle"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`;
+    }
+
+    // ── Load Directory ────────────────────────────────────────────────────────
+    async function navigateTo(remotePath, skipTerminalCd = false) {
+      if (!isConnected) return;
+
+      fileList.innerHTML = `<div class="explorer-loading"><div class="spinner"></div> Loading…</div>`;
+      explorerStatus.textContent = 'Loading…';
+
+      try {
+        const entries = await window.sshBridge.listDirectory(remotePath);
+        currentPath = remotePath;
+        renderBreadcrumb(currentPath);
+        renderFileList(entries);
+        explorerStatus.textContent = `${entries.length} items · ${currentPath}`;
+
+        if (syncPathEnabled && !skipTerminalCd && !navigatingFromTerminal) {
+          window.sshBridge.changeDirectory(remotePath);
+        }
+      } catch (err) {
+        fileList.innerHTML = `<div class="explorer-empty">⚠️ ${err.message || 'Could not list directory'}</div>`;
+        explorerStatus.textContent = 'Error loading directory';
+      }
+    }
+
+    // ── Render File List ──────────────────────────────────────────────────────
+    function renderFileList(entries) {
+      fileList.innerHTML = '';
+
+      if (entries.length === 0) {
+        fileList.innerHTML = '<div class="explorer-empty">📂 Empty directory</div>';
+        return;
+      }
+
+      entries.sort((a, b) => {
+        if (a.isDir && !b.isDir) return -1;
+        if (!a.isDir && b.isDir) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Add ".." if not at root
+      if (currentPath !== '/') {
+        const backItem = document.createElement('div');
+        backItem.className = 'file-item';
+        backItem.innerHTML = `
+      <span class="file-icon">⬆️</span>
+      <span class="file-name is-dir">..</span>
+    `;
+        backItem.addEventListener('click', () => {
+          const parent = currentPath.replace(/\/[^/]+\/?$/, '') || '/';
+          navigateTo(parent);
+        });
+        fileList.appendChild(backItem);
+      }
+
+      entries.forEach(entry => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.dataset.name = entry.name;
+        item.dataset.isDir = entry.isDir ? '1' : '0';
+
+        const remotePath = `${currentPath === '/' ? '' : currentPath}/${entry.name}`;
+
+        item.innerHTML = `
+      <input type="checkbox" class="item-checkbox" />
+      <span class="file-icon">${getFileIcon(entry.name, entry.isDir)}</span>
+      <span class="file-name ${entry.isDir ? 'is-dir' : ''}">${entry.name}</span>
+      <span class="file-size">${entry.isDir ? '' : formatSize(entry.size)}</span>
+      <div class="file-actions">
+        ${!entry.isDir ? `
+          <button class="file-action-btn" title="Download" data-action="download">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+          </button>
+          <button class="file-action-btn" title="Edit" data-action="edit">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </button>
+        ` : ''}
+        <button class="file-action-btn danger" title="Delete" data-action="delete">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+      </div>
+    `;
+
+        // Double-click: navigate into dir or edit file
+        item.addEventListener('dblclick', (e) => {
+          if (selectModeActive) return;
+          if (entry.isDir) {
+            navigateTo(remotePath);
+          } else {
+            openFileEditor(remotePath, entry.name);
+          }
+        });
+
+        // Single click on item: toggle selection if select-mode is active, otherwise navigate if dir
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('[data-action]')) return;
+
+          if (selectModeActive) {
+            // Toggle selection
+            const cb = item.querySelector('.item-checkbox');
+            // if user clicked the checkbox directly, it toggles its own state before this runs, so we re-sync
+            if (e.target !== cb) {
+              cb.checked = !cb.checked;
+            }
+
+            if (cb.checked) {
+              selectedPaths.add(remotePath);
+              item.classList.add('selected');
+            } else {
+              selectedPaths.delete(remotePath);
+              item.classList.remove('selected');
+            }
+            updateSelectionToolbar();
+          } else {
+            if (entry.isDir) navigateTo(remotePath);
+          }
+        });
+
+        // Action buttons
+        item.querySelectorAll('[data-action]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            if (action === 'download') await downloadFile(remotePath, entry.name);
+            if (action === 'edit') await openFileEditor(remotePath, entry.name);
+            if (action === 'delete') await deleteFile(remotePath, entry.name);
+          });
+        });
+
+        fileList.appendChild(item);
+      });
+    }
+
+    // ── Download File ─────────────────────────────────────────────────────────
+    async function downloadFile(remotePath, filename) {
+      try {
+        setProgress(20);
+        explorerStatus.textContent = `Downloading ${filename}…`;
+        const data = await window.sshBridge.downloadFile(remotePath);
+        setProgress(80);
+
+        // Convert base64 to blob and download
+        const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+        const blob = new Blob([bytes]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        setProgress(100);
+        explorerStatus.textContent = `Downloaded: ${filename}`;
+        showToast(`Downloaded ${filename}`, 'success');
+      } catch (err) {
+        setProgress(100);
+        showToast(`Download failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Open File Editor ──────────────────────────────────────────────────────
+    async function openFileEditor(remotePath, filename) {
+      try {
+        explorerStatus.textContent = `Loading ${filename}…`;
+        const data = await window.sshBridge.downloadFile(remotePath);
+
+        // Decode base64 to text
+        const text = decodeURIComponent(escape(atob(data)));
+
+        currentEditFile = { remotePath, filename };
+        editorFilename.textContent = filename;
+
+        // Infer language
+        const ext = filename.split('.').pop().toLowerCase();
+        const langMap = { js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript', py: 'python', rb: 'ruby', php: 'php', html: 'html', css: 'css', scss: 'scss', json: 'json', md: 'markdown', sh: 'shell' };
+
+        if (monacoInstance) {
+          const model = monacoInstance.getModel();
+          monaco.editor.setModelLanguage(model, langMap[ext] || 'plaintext');
+          monacoInstance.setValue(text || '');
+          monacoInstance.focus();
+        } else {
+          // Fallback if monaco isn't loaded yet
+          setTimeout(() => { if (monacoInstance) monacoInstance.setValue(text || ''); }, 500);
+        }
+
+        updateEditorLines();
+
+        editorModal.classList.add('open');
+        explorerStatus.textContent = `Editing: ${filename}`;
+      } catch (err) {
+        showToast(`Could not open file: ${err.message}`, 'error');
+      }
+    }
+
+    function updateEditorLines() {
+      if (monacoInstance) {
+        const lines = monacoInstance.getModel().getLineCount();
+        editorLines.textContent = `${lines} lines`;
+      }
+    }
+
+    // ── Save & Upload Edited File ─────────────────────────────────────────────
+    async function saveEditorFile() {
+      if (!currentEditFile) return;
+
+      btnEditorSave.disabled = true;
+      btnEditorSave.textContent = '⏳ Saving…';
+
+      try {
+        const text = monacoInstance ? monacoInstance.getValue() : '';
+        // Encode text to base64
+        const b64 = btoa(unescape(encodeURIComponent(text)));
+        setProgress(40);
+
+        await window.sshBridge.uploadFile(currentEditFile.remotePath, b64);
+
+        setProgress(100);
+        editorStatusMsg.classList.add('show');
+        setTimeout(() => editorStatusMsg.classList.remove('show'), 2000);
+        showToast(`Saved ${currentEditFile.filename}`, 'success');
+
+        // Refresh file list
+        await navigateTo(currentPath);
+      } catch (err) {
+        setProgress(100);
+        showToast(`Save failed: ${err.message}`, 'error');
+      } finally {
+        btnEditorSave.disabled = false;
+        btnEditorSave.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> Save & Upload`;
+      }
+    }
+
+    btnEditorSave.addEventListener('click', saveEditorFile);
+    btnEditorClose.addEventListener('click', () => {
+      editorModal.classList.remove('open');
+      currentEditFile = null;
+    });
+
+    // ── Delete File ───────────────────────────────────────────────────────────
+    async function deleteFile(remotePath, filename) {
+      if (!confirm(`Delete "${filename}"? This cannot be undone.`)) return;
+      try {
+        await window.sshBridge.deleteFile(remotePath);
+        showToast(`Deleted ${filename}`, 'success');
+        await navigateTo(currentPath);
+      } catch (err) {
+        showToast(`Delete failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Upload Files (via button or drag) ────────────────────────────────────
+    async function uploadFiles(files) {
+      if (!isConnected || files.length === 0) return;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const remotePath = `${currentPath === '/' ? '' : currentPath}/${file.name}`;
+
+        explorerStatus.textContent = `Uploading ${file.name}…`;
+
+        try {
+          const buffer = await file.arrayBuffer();
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          setProgress(Math.round(((i + 0.5) / files.length) * 100));
+          await window.sshBridge.uploadFile(remotePath, b64);
+          showToast(`Uploaded ${file.name}`, 'success');
+        } catch (err) {
+          showToast(`Failed to upload ${file.name}: ${err.message}`, 'error');
+        }
+      }
+
+      setProgress(100);
+      await navigateTo(currentPath);
+    }
+
+    uploadBtn.addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', () => {
+      uploadFiles(Array.from(uploadInput.files));
+      uploadInput.value = '';
+    });
+
+    // Drag & drop on upload button
+    uploadBtn.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadBtn.classList.add('drag-over');
+    });
+    uploadBtn.addEventListener('dragleave', () => uploadBtn.classList.remove('drag-over'));
+    uploadBtn.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadBtn.classList.remove('drag-over');
+      uploadFiles(Array.from(e.dataTransfer.files));
+    });
+
+    // Also allow drag & drop on the whole explorer panel
+    fileExplorer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadBtn.classList.add('drag-over');
+    });
+    fileExplorer.addEventListener('dragleave', (e) => {
+      if (!fileExplorer.contains(e.relatedTarget)) uploadBtn.classList.remove('drag-over');
+    });
+    fileExplorer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadBtn.classList.remove('drag-over');
+      uploadFiles(Array.from(e.dataTransfer.files));
+    });
+
+    // ── Home and Refresh buttons ──────────────────────────────────────────────
+    btnHome.addEventListener('click', () => navigateTo('/'));
+    btnRefresh.addEventListener('click', () => navigateTo(currentPath));
+
+    // ── IPC → xterm ───────────────────────────────────────────────────────────
+    window.sshBridge.onData((data) => {
+      terminal.write(data);
+    });
+
+    window.sshBridge.onConnected(async (info) => {
+      statusDot.className = 'connected';
+      connLabel.textContent = info.label || 'Connected';
+      if (info.projectName) {
+        document.title = `⚡ ${info.projectName} — QuickZack`;
+      }
+      connStatus.textContent = '';
+      isConnected = true;
+
+      // Load home directory on connect
+      try {
+        const home = info.homeDir || '/';
+        lastCwdFromTerminal = home;
+        await navigateTo(home, true); // skipTerminalCd=true on initial load
+      } catch { }
+    });
+
+    window.sshBridge.onError((msg) => {
+      statusDot.className = 'error';
+      connLabel.textContent = 'Connection Failed';
+      connStatus.textContent = msg;
+      terminal.write(`\r\n\x1b[31m✖ ${msg}\x1b[0m\r\n`);
+      fileList.innerHTML = `<div class="explorer-empty">⚠️ Connection failed</div>`;
+      explorerStatus.textContent = 'Not connected';
+      isConnected = false;
+    });
+
+    window.sshBridge.onClosed(() => {
+      statusDot.className = 'closed';
+      connLabel.textContent = 'Disconnected';
+      connStatus.textContent = '';
+      isConnected = false;
+      terminal.write('\r\n\x1b[90m[Connection closed]\x1b[0m\r\n');
+      fileList.innerHTML = `<div class="explorer-empty">🔌 Session closed</div>`;
+      explorerStatus.textContent = 'Disconnected';
+      statRam.textContent = 'RAM: --/--';
+      statDisk.textContent = 'Disk: --/--';
+      statLoad.textContent = 'Load: --';
+      document.getElementById('stat-software').innerHTML = '';
+    });
+
+    // ── System Stats Update ──────────────────────────────────────────────────
+    window.sshBridge.onSysStats((stats) => {
+      if (stats.ram) statRam.textContent = `RAM: ${stats.ram}`;
+      if (stats.disk) statDisk.textContent = `Disk: ${stats.disk}`;
+      if (stats.load) statLoad.textContent = `Load: ${stats.load}`;
+    });
+
+    window.sshBridge.onSoftwareVersions((v) => {
+      const parent = document.getElementById('stat-software');
+      parent.innerHTML = '';
+
+      const buildBadge = (label, ver, iconColor) => {
+        const displayVer = (!ver || ver.trim() === '') ? 'N/A' : `v${ver.trim()}`;
+        return `
+          <div class="stat-item" title="${label} Version">
+            <b style="color:${iconColor}">${label}</b> <span style="opacity: ${displayVer === 'N/A' ? '0.5' : '1'}">${displayVer}</span>
+          </div>
+        `;
+      };
+
+      let html = '';
+      html += buildBadge('Node', v.node, '#22c55e');
+      html += buildBadge('NPM', v.npm, '#ef4444');
+      html += buildBadge('PHP', v.php, '#a855f7');
+      html += buildBadge('MySQL', v.mysql, '#3b82f6');
+      html += buildBadge('Python', v.python, '#eab308');
+      html += buildBadge('Composer', v.composer, '#a855f7');
+      parent.innerHTML = html;
+    });
+
+    // Handle Scroll Buttons
+    document.getElementById('stat-scroll-left').addEventListener('click', () => {
+      document.getElementById('stat-scroll-container').scrollBy({ left: -150, behavior: 'smooth' });
+    });
+
+    document.getElementById('stat-scroll-right').addEventListener('click', () => {
+      document.getElementById('stat-scroll-container').scrollBy({ left: 150, behavior: 'smooth' });
+    });
+
+    // ── Terminal CWD → Explorer sync ─────────────────────────────────────────
+    // Called when user presses Enter in terminal: main runs pwd and sends back cwd
+    window.sshBridge.onCwdUpdate(async (newPath) => {
+      if (!syncPathEnabled) return;          // User disabled sync
+      if (newPath === currentPath) return;   // Already there — no refresh needed
+      if (newPath === lastCwdFromTerminal) return; // Duplicate event
+
+      lastCwdFromTerminal = newPath;
+      navigatingFromTerminal = true;
+      try {
+        await navigateTo(newPath, true); // skipTerminalCd=true to avoid echo loop
+      } finally {
+        navigatingFromTerminal = false;
+      }
+    });
+
+    // ── xterm → IPC ───────────────────────────────────────────────────────────
+    terminal.onData((data) => {
+      window.sshBridge.sendInput(data);
+    });
+
+    terminal.onResize(({ cols, rows }) => {
+      window.sshBridge.resize(cols, rows);
+    });
+
+    // ── Copy & Paste ──────────────────────────────────────────────────────────
+    terminal.onSelectionChange(() => {
+      if (terminal.hasSelection()) {
+        const text = terminal.getSelection();
+        navigator.clipboard.writeText(text).catch(console.error);
+      }
+    });
+
+    window.addEventListener('contextmenu', async (e) => {
+      if (e.target.closest('#file-explorer') || e.target.closest('#editor-modal')) return;
+      e.preventDefault();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) window.sshBridge.sendInput(text);
+      } catch (err) {
+        console.error('Clipboard paste error:', err);
+      }
+    });
+
+    // ── Select Mode & Zip ───────────────────────────────────────────────────
+    function updateSelectionToolbar() {
+      selectionCount.textContent = `${selectedPaths.size} selected`;
+      if (selectedPaths.size > 0 && selectModeActive) {
+        selectionToolbar.classList.add('show');
+      } else {
+        selectionToolbar.classList.remove('show');
+      }
+    }
+
+    btnSelectMode.addEventListener('click', () => {
+      selectModeActive = !selectModeActive;
+      btnSelectMode.classList.toggle('active', selectModeActive);
+      document.body.classList.toggle('select-mode', selectModeActive);
+
+      if (!selectModeActive) {
+        // Clear selection when disabling mode
+        selectedPaths.clear();
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.file-item.selected').forEach(el => el.classList.remove('selected'));
+      }
+      updateSelectionToolbar();
+    });
+
+    btnClearSelection.addEventListener('click', () => {
+      selectedPaths.clear();
+      document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.file-item.selected').forEach(el => el.classList.remove('selected'));
+      updateSelectionToolbar();
+    });
+
+    btnZipSelected.addEventListener('click', async () => {
+      if (selectedPaths.size === 0) return;
+
+      btnZipSelected.disabled = true;
+      const originalHtml = btnZipSelected.innerHTML;
+      btnZipSelected.innerHTML = `<div class="spinner" style="width:12px;height:12px;border-width:1px"></div> Archiving...`;
+
+      try {
+        const pathsArray = Array.from(selectedPaths);
+        explorerStatus.textContent = `Archiving ${pathsArray.length} items...`;
+        setProgress(30);
+
+        const result = await window.sshBridge.zipFiles(currentPath, pathsArray);
+        setProgress(80);
+
+        // Download the Archive
+        const bytes = Uint8Array.from(atob(result.data), c => c.charCodeAt(0));
+        const blob = new Blob([bytes], { type: 'application/gzip' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        setProgress(100);
+        showToast('Downloaded archive successfully', 'success');
+      } catch (err) {
+        setProgress(100);
+        showToast(`Archive failed: ${err.message}`, 'error');
+      } finally {
+        btnZipSelected.disabled = false;
+        btnZipSelected.innerHTML = originalHtml;
+        // Exit selection mode after zip
+        btnSelectMode.click();
+      }
+    });
+
+    // ── Context Menu ────────────────────────────────────────────────────────
+    let ctxTarget = null; // { remotePath, name, isDir }
+
+    const renameModal       = document.getElementById('rename-modal');
+    const renameInput       = document.getElementById('rename-input');
+    const propertiesModal   = document.getElementById('properties-modal');
+    const propertiesContent = document.getElementById('properties-content');
+
+    function hideContextMenu() {
+      contextMenu.classList.remove('show');
+      contextMenu.style.display = 'none';
+    }
+
+    fileExplorer.addEventListener('contextmenu', (e) => {
+      if (e.target.closest('#explorer-header') || e.target.closest('#inline-create')) return;
+      e.preventDefault();
+
+      const fileItem = e.target.closest('.file-item');
+      if (!fileItem || !fileItem.dataset.name) return; // only on actual rows
+
+      const name     = fileItem.dataset.name;
+      const isDir    = fileItem.dataset.isDir === '1';
+      const remotePath = `${currentPath === '/' ? '' : currentPath}/${name}`;
+      ctxTarget = { remotePath, name, isDir };
+
+      // Show / hide items based on type
+      document.getElementById('ctx-open').style.display     = isDir  ? 'flex' : 'none';
+      document.getElementById('ctx-edit').style.display     = !isDir ? 'flex' : 'none';
+      document.getElementById('ctx-download').style.display = !isDir ? 'flex' : 'none';
+
+      let left = e.pageX;
+      let top  = e.pageY;
+      contextMenu.style.display = 'block';
+      const mw = contextMenu.offsetWidth;
+      const mh = contextMenu.offsetHeight;
+      if (left + mw > window.innerWidth)  left = window.innerWidth  - mw - 5;
+      if (top  + mh > window.innerHeight) top  = window.innerHeight - mh - 5;
+      contextMenu.style.left = `${left}px`;
+      contextMenu.style.top  = `${top}px`;
+      contextMenu.classList.add('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#explorer-context-menu')) hideContextMenu();
+    });
+
+    // Open folder
+    document.getElementById('ctx-open').addEventListener('click', () => {
+      hideContextMenu();
+      if (ctxTarget && ctxTarget.isDir) navigateTo(ctxTarget.remotePath);
+    });
+
+    // Edit file
+    document.getElementById('ctx-edit').addEventListener('click', () => {
+      hideContextMenu();
+      if (ctxTarget && !ctxTarget.isDir) openFileEditor(ctxTarget.remotePath, ctxTarget.name);
+    });
+
+    // Rename
+    document.getElementById('ctx-rename').addEventListener('click', () => {
+      hideContextMenu();
+      if (!ctxTarget) return;
+      renameInput.value = ctxTarget.name;
+      renameModal.classList.add('open');
+      setTimeout(() => { renameInput.focus(); renameInput.select(); }, 50);
+    });
+
+    // Copy Path
+    document.getElementById('ctx-copy-path').addEventListener('click', () => {
+      hideContextMenu();
+      if (!ctxTarget) return;
+      navigator.clipboard.writeText(ctxTarget.remotePath)
+        .then(() => showToast(`📋 Path copied`, 'info', 2000))
+        .catch(() => showToast('Copy failed', 'error'));
+    });
+
+    // Download (files only)
+    document.getElementById('ctx-download').addEventListener('click', () => {
+      hideContextMenu();
+      if (ctxTarget && !ctxTarget.isDir) downloadFile(ctxTarget.remotePath, ctxTarget.name);
+    });
+
+    // Delete
+    document.getElementById('ctx-delete').addEventListener('click', () => {
+      hideContextMenu();
+      if (ctxTarget) deleteFile(ctxTarget.remotePath, ctxTarget.name);
+    });
+
+    // Properties
+    document.getElementById('ctx-properties').addEventListener('click', async () => {
+      hideContextMenu();
+      if (!ctxTarget) return;
+      const parentDir = ctxTarget.remotePath.replace(/\/[^/]+$/, '') || '/';
+      let entry = null;
+      try {
+        const list = await window.sshBridge.listDirectory(parentDir);
+        entry = list.find(en => en.name === ctxTarget.name);
+      } catch {}
+      const fmtDate = ts => ts ? new Date(ts * 1000).toLocaleString() : 'Unknown';
+      propertiesContent.innerHTML = `
+        <span class="props-label">Name</span><span class="props-value">${ctxTarget.name}</span>
+        <span class="props-label">Type</span><span class="props-value">${ctxTarget.isDir ? 'Directory' : 'File'}</span>
+        <span class="props-label">Path</span><span class="props-value">${ctxTarget.remotePath}</span>
+        ${entry && !ctxTarget.isDir ? `<span class="props-label">Size</span><span class="props-value">${formatSize(entry.size)}</span>` : ''}
+        ${entry && entry.mtime ? `<span class="props-label">Modified</span><span class="props-value">${fmtDate(entry.mtime)}</span>` : ''}
+      `;
+      propertiesModal.classList.add('open');
+    });
+
+    // ── Rename Modal handlers ─────────────────────────────────────────────────
+    document.getElementById('btn-rename-cancel').addEventListener('click', () => {
+      renameModal.classList.remove('open');
+    });
+
+    document.getElementById('btn-properties-close').addEventListener('click', () => {
+      propertiesModal.classList.remove('open');
+    });
+
+    renameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { renameModal.classList.remove('open'); return; }
+      if (e.key === 'Enter')  { e.preventDefault(); doRename(); }
+    });
+
+    document.getElementById('btn-rename-confirm').addEventListener('click', doRename);
+
+    async function doRename() {
+      if (!ctxTarget) return;
+      const newName = renameInput.value.trim();
+      if (!newName || newName === ctxTarget.name) { renameModal.classList.remove('open'); return; }
+      if (newName.includes('/')) { showToast('Name cannot contain slashes', 'error'); return; }
+      const parentDir = ctxTarget.remotePath.replace(/\/[^/]+$/, '') || '/';
+      const newPath   = (parentDir === '/' ? '' : parentDir) + '/' + newName;
+      renameModal.classList.remove('open');
+      try {
+        await window.sshBridge.renameFile(ctxTarget.remotePath, newPath);
+        showToast(`Renamed to "${newName}"`, 'success');
+        await navigateTo(currentPath);
+      } catch (err) {
+        showToast(`Rename failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ── Create Folder / File ────────────────────────────────────────────────
+    function showInlineCreate(type) {
+      inlineCreateType = type;
+      inlineCreateIcon.textContent = type === 'folder' ? '📁' : '📄';
+      inlineCreateInput.placeholder = type === 'folder' ? 'New Folder Name' : 'New File Name';
+      inlineCreateInput.value = '';
+      inlineCreate.classList.add('show');
+      inlineCreateInput.focus();
+    }
+
+    function hideInlineCreate() {
+      inlineCreate.classList.remove('show');
+      inlineCreateType = null;
+    }
+
+    btnNewFolder.addEventListener('click', () => showInlineCreate('folder'));
+    btnNewFile.addEventListener('click', () => showInlineCreate('file'));
+    btnInlineCancel.addEventListener('click', hideInlineCreate);
+
+    inlineCreateInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleInlineCreate();
+      } else if (e.key === 'Escape') {
+        hideInlineCreate();
+      }
+    });
+
+    btnInlineConfirm.addEventListener('click', handleInlineCreate);
+
+    async function handleInlineCreate() {
+      const name = inlineCreateInput.value.trim();
+      if (!name) return;
+      if (name.includes('/')) {
+        showToast('Names cannot contain slashes', 'error');
+        return;
+      }
+
+      const remotePath = `${currentPath === '/' ? '' : currentPath}/${name}`;
+      const isFolder = inlineCreateType === 'folder';
+
+      hideInlineCreate();
+      explorerStatus.textContent = `Creating ${isFolder ? 'folder' : 'file'}...`;
+
+      try {
+        if (isFolder) {
+          await window.sshBridge.createFolder(remotePath);
+        } else {
+          await window.sshBridge.createFile(remotePath);
+        }
+        showToast(`Created ${name}`, 'success');
+        await navigateTo(currentPath);
+      } catch (err) {
+        showToast(`Create failed: ${err.message}`, 'error');
+      }
+    }
+
+    // Focus terminal by default
+    terminal.focus();
+  </script>
 </body>
+
 </html>

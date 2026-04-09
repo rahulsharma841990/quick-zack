@@ -1,6 +1,6 @@
 {
   "name": "quick-zack",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A lightweight desktop search utility for quickly opening dev projects",
   "main": "main.js",
   "scripts": {
@@ -41,9 +41,10 @@
     ],
     "appId": "com.quickzack.launcher",
     "productName": "QuickZack",
-    "copyright": "Copyright © 2025 QuickZack",
+    "copyright": "Copyright © 2026 QuickZack",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "assets"
     },
     "files": [
       "main.js",
@@ -52,6 +53,8 @@
       "index.html",
       "terminal.html",
       "config.json",
+      "assets/**/*",
+      "tray-icon-update.png",
       "tray-icon.png",
       "node_modules/**/*",
       "package.json"

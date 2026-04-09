@@ -23,8 +23,13 @@ autoUpdater.autoDownload = false;
 
 autoUpdater.on('update-available', (info) => {
   // Show green dot tray icon
-  const updateIconPath = path.join(__dirname, 'tray-icon-update.png');
-  const normalIconPath = path.join(__dirname, 'tray-icon.png');
+  const updateIconPath = fs.existsSync(path.join(__dirname, 'assets/icon-update.png')) 
+    ? path.join(__dirname, 'assets/icon-update.png')
+    : path.join(__dirname, 'tray-icon-update.png');
+  const normalIconPath = fs.existsSync(path.join(__dirname, 'assets/icon.png'))
+    ? path.join(__dirname, 'assets/icon.png')
+    : path.join(__dirname, 'tray-icon.png');
+
   if (fs.existsSync(updateIconPath) && tray) {
     tray.setImage(updateIconPath);
   }
@@ -49,7 +54,9 @@ autoUpdater.on('update-downloaded', () => {
   const readyNotif = new Notification({
     title: 'Update Downloaded! ✅',
     body: 'The update has been downloaded. The application will now restart to install.',
-    icon: path.join(__dirname, 'tray-icon.png')
+    icon: fs.existsSync(path.join(__dirname, 'assets/icon.png'))
+      ? path.join(__dirname, 'assets/icon.png')
+      : path.join(__dirname, 'tray-icon.png')
   });
 
   readyNotif.on('click', () => {
@@ -329,7 +336,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
-    }
+    },
+    icon: path.join(__dirname, 'assets/icon.png')
   });
 
   win.loadFile('index.html');
@@ -420,7 +428,10 @@ function buildTrayMenu() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, 'tray-icon.png');
+  const iconPath = fs.existsSync(path.join(__dirname, 'assets/icon.png'))
+    ? path.join(__dirname, 'assets/icon.png')
+    : path.join(__dirname, 'tray-icon.png');
+
   let icon;
   if (fs.existsSync(iconPath)) {
     icon = nativeImage.createFromPath(iconPath);
@@ -534,7 +545,8 @@ function createSshTerminal(sftpConfig, projectName) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
-    }
+    },
+    icon: path.join(__dirname, 'assets/icon.png')
   });
 
   termWin.setMenu(null);

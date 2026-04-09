@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="tray-icon.png" alt="QuickZack Logo" width="100" height="100" style="border-radius:20px"/>
+<img src="assets/icon.png" alt="QuickZack Logo" width="100" height="100" style="border-radius:20px"/>
 
 # ⚡ QuickZack
 
@@ -16,7 +16,7 @@ Now available on **Windows** and **macOS**.
 [![macOS](https://img.shields.io/badge/macOS-12%2B-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-28-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
 [![License](https://img.shields.io/badge/License-MIT-8b5cf6?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.3.1-34d399?style=for-the-badge)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-1.4.2-34d399?style=for-the-badge)](https://github.com/rahulsharma841990/quick-zack)
 [![Free](https://img.shields.io/badge/Price-Free-fb923c?style=for-the-badge)](https://github.com)
 
 <br/>
@@ -41,17 +41,20 @@ Press Alt+Space  →  Type "my-re"  →  Highlights "my-react-app"  →  Press E
 
 ## ✨ Features
 
-| Feature                | Description                                                |
-| ---------------------- | ---------------------------------------------------------- |
-| ⚡ **Global Shortcut** | `Alt+Space` from anywhere — browser, terminal, wherever    |
-| 🔍 **Fuzzy Search**    | Powered by Fuse.js — typos are fine, it gets you           |
-| 🎯 **Any Editor**      | VS Code, PHPStorm, Sublime, or any custom command          |
-| 🔀 **Auto Detection**  | Identifies Node, PHP, Python, Rust, Go, Java, Git projects |
-| 🗂️ **System Tray**     | Runs silently, zero taskbar clutter                        |
-| ⌨️ **Keyboard First**  | `↑↓` navigate, `Enter` open, `Esc` close — no mouse needed |
-| ⚙️ **Simple Config**   | One JSON file to configure everything                      |
-| 🚫 **No Account**      | No login, no cloud, no telemetry. 100% local.              |
-| 🍎 **macOS Support**   | Native Apple Silicon & Intel Mac builds                    |
+| Feature                | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| ⚡ **Global Shortcut** | `Alt+Space` from anywhere — browser, terminal, wherever           |
+| 🔍 **Fuzzy Search**    | Powered by Fuse.js — typos are fine, it gets you                  |
+| 🎯 **Any Editor**      | VS Code, PHPStorm, Sublime, or any custom command                 |
+| 🔀 **Auto Detection**  | Identifies Node, PHP, Python, Rust, Go, Java, Git projects        |
+| 🗂️ **System Tray**     | Runs silently, zero taskbar clutter                               |
+| ⌨️ **Keyboard First**  | `↑↓` navigate, `Enter` open, `Esc` close — no mouse needed        |
+| ⚙️ **Simple Config**   | One JSON file to configure everything                             |
+| 🚫 **No Account**      | No login, no cloud, no telemetry. 100% local.                     |
+| 📁 **SFTP Explorer**   | Manage remote files with Rename, Delete, Download, and Properties |
+| 📟 **SSH Terminal**    | Integrated terminal with real-time **RAM, Disk, and CPU stats**   |
+| 🔄 **Auto Updater**    | Background update checks with tray indicator (green dot)          |
+| 🍎 **macOS Support**   | Native Apple Silicon & Intel Mac builds                           |
 
 ---
 
@@ -91,19 +94,19 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 ### Windows
 
-| Package                                                         | Description                                 | Size  |
-| --------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack Setup 1.3.1.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.3.1/QuickZack.Setup.1.3.1.exe)    | Full installer with Start Menu & auto-start | ~74MB |
-| [**QuickZack-Portable-1.3.1.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.3.1/QuickZack-Portable-1.3.1.exe) | No install needed, run anywhere             | ~73MB |
+| Package                                                                                                                                   | Description                                 | Size  |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----- |
+| [**QuickZack Setup 1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack.Setup.1.4.2.exe)       | Full installer with Start Menu & auto-start | ~74MB |
+| [**QuickZack-Portable-1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-Portable-1.4.2.exe) | No install needed, run anywhere             | ~73MB |
 
 > **Requirements:** Windows 10 or 11 (64-bit)
 
 ### macOS
 
-| Package                                                         | Description                                 | Size  |
-| --------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack-1.3.1-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.3.1/QuickZack-1.3.1-arm64.dmg) | Apple Silicon (M1/M2/M3/M4)                 | ~93MB |
-| [**QuickZack-1.3.1.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.3.1/QuickZack-1.3.1.dmg) | Intel Mac (x64)                             | ~100MB |
+| Package                                                                                                                             | Description                 | Size   |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
+| [**QuickZack-1.4.2-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) | ~93MB  |
+| [**QuickZack-1.4.2.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2.dmg)             | Intel Mac (x64)             | ~100MB |
 
 > **Requirements:** macOS 12+ (Monterey or later)
 

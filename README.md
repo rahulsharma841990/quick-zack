@@ -96,7 +96,7 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                                                                                                   | Description                                 | Size  |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack Setup 1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack.Setup.1.4.2.exe)       | Full installer with Start Menu & auto-start | ~74MB |
+| [**QuickZack Setup 1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack%20Setup%201.4.2.exe)  | Full installer with Start Menu & auto-start | ~82MB |
 | [**QuickZack-Portable-1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-Portable-1.4.2.exe) | No install needed, run anywhere             | ~73MB |
 
 > **Requirements:** Windows 10 or 11 (64-bit)
@@ -105,8 +105,8 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                                                                                             | Description                 | Size   |
 | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
-| [**QuickZack-1.4.2-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) | ~93MB  |
-| [**QuickZack-1.4.2.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2.dmg)             | Intel Mac (x64)             | ~100MB |
+| [**QuickZack-1.4.2-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) | ~102MB |
+| [**QuickZack-1.4.2.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2.dmg)             | Intel Mac (x64)             | ~109MB |
 
 > **Requirements:** macOS 12+ (Monterey or later)
 

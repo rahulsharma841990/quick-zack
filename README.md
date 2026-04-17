@@ -99,6 +99,7 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 | [**QuickZack Setup 1.4.3.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack.Setup.1.4.3.exe)       | Full installer with Start Menu & auto-start | ~74MB |
 | [**QuickZack-Portable-1.4.3.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack-Portable-1.4.3.exe) | No install needed, run anywhere             | ~73MB |
 
+
 > **Requirements:** Windows 10 or 11 (64-bit)
 
 ### macOS

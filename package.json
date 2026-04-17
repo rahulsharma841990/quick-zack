@@ -1,6 +1,6 @@
 {
   "name": "quick-zack",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "A lightweight desktop search utility for quickly opening dev projects",
   "main": "main.js",
   "scripts": {

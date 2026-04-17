@@ -16,7 +16,7 @@ Now available on **Windows** and **macOS**.
 [![macOS](https://img.shields.io/badge/macOS-12%2B-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-28-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
 [![License](https://img.shields.io/badge/License-MIT-8b5cf6?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.4.2-34d399?style=for-the-badge)](https://github.com/rahulsharma841990/quick-zack)
+[![Version](https://img.shields.io/badge/Version-1.4.3-34d399?style=for-the-badge)](https://github.com/rahulsharma841990/quick-zack)
 [![Free](https://img.shields.io/badge/Price-Free-fb923c?style=for-the-badge)](https://github.com)
 
 <br/>
@@ -96,8 +96,9 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                                                                                                   | Description                                 | Size  |
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----- |
-| [**QuickZack Setup 1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack%20Setup%201.4.2.exe)  | Full installer with Start Menu & auto-start | ~82MB |
-| [**QuickZack-Portable-1.4.2.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-Portable-1.4.2.exe) | No install needed, run anywhere             | ~73MB |
+| [**QuickZack Setup 1.4.3.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack.Setup.1.4.3.exe)       | Full installer with Start Menu & auto-start | ~74MB |
+| [**QuickZack-Portable-1.4.3.exe**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack-Portable-1.4.3.exe) | No install needed, run anywhere             | ~73MB |
+
 
 > **Requirements:** Windows 10 or 11 (64-bit)
 
@@ -105,8 +106,8 @@ Press **`Alt+Space`** anywhere → start typing → press **`Enter`** to open in
 
 | Package                                                                                                                             | Description                 | Size   |
 | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
-| [**QuickZack-1.4.2-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) | ~102MB |
-| [**QuickZack-1.4.2.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.2/QuickZack-1.4.2.dmg)             | Intel Mac (x64)             | ~109MB |
+| [**QuickZack-1.4.3-arm64.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack-1.4.3-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) | ~93MB  |
+| [**QuickZack-1.4.3.dmg**](https://github.com/rahulsharma841990/quick-zack/releases/download/v1.4.3/QuickZack-1.4.3.dmg)             | Intel Mac (x64)             | ~100MB |
 
 > **Requirements:** macOS 12+ (Monterey or later)
 

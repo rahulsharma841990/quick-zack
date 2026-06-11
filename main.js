@@ -7,7 +7,8 @@ const {
   Menu,
   nativeImage,
   screen,
-  Notification
+  Notification,
+  dialog
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -16,12 +17,20 @@ const { exec, execSync } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
 const { Client: SshClient } = require('ssh2');
-const { autoUpdater } = require('electron-updater');
+
+let autoUpdater = null;
+try {
+  const updater = require('electron-updater');
+  autoUpdater = updater.autoUpdater;
+} catch (err) {
+  console.warn('[QuickZack] electron-updater not available, auto-update disabled.');
+}
 
 // ─── Auto Updater Setup ───────────────────────────────────────────────────────
-autoUpdater.autoDownload = false;
+if (autoUpdater) {
+  autoUpdater.autoDownload = false;
 
-autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', (info) => {
   // Show green dot tray icon
   const updateIconPath = fs.existsSync(path.join(__dirname, 'assets/icon-update.png')) 
     ? path.join(__dirname, 'assets/icon-update.png')
@@ -69,9 +78,10 @@ autoUpdater.on('update-downloaded', () => {
   }, 3000);
 });
 
-autoUpdater.on('error', (err) => {
-  console.error('[QuickZack] Auto-updater Error:', err);
-});
+  autoUpdater.on('error', (err) => {
+    console.error('[QuickZack] Auto-updater Error:', err);
+  });
+}
 // Active SSH sessions: webContents.id → shell stream
 const sshSessions = new Map();
 // Active SFTP clients: webContents.id → sftp client
@@ -84,6 +94,8 @@ const statTimers = new Map();
 const sshConns = new Map();
 // PWD check debounce timers
 const pwdTimers = new Map();
+// Active streams for cancellation: webContents.id → { readStream, writeStream }
+const activeTransfers = new Map();
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -392,7 +404,9 @@ function buildTrayMenu() {
     {
       label: '📥 Check for Updates',
       click: () => {
-        autoUpdater.checkForUpdates();
+        if (autoUpdater) {
+          autoUpdater.checkForUpdates();
+        }
       }
     },
     { type: 'separator' },
@@ -821,8 +835,48 @@ ipcMain.handle('sftp-list', (event, remotePath) => {
   });
 });
 
-// Download file → base64
-ipcMain.handle('sftp-download', (event, remotePath) => {
+// Download file to local path (streaming with progress)
+ipcMain.handle('sftp-download', (event, remotePath, localPath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      
+      // Get file size first for progress
+      sftp.stat(remotePath, (err, stats) => {
+        if (err) { reject(err); return; }
+        const total = stats.size;
+        let transferred = 0;
+
+        const readStream = sftp.createReadStream(remotePath);
+        const writeStream = fs.createWriteStream(localPath);
+
+        activeTransfers.set(event.sender.id, { readStream, writeStream });
+        const cleanup = () => activeTransfers.delete(event.sender.id);
+
+        readStream.on('data', (chunk) => {
+          transferred += chunk.length;
+          event.sender.send('sftp-progress', { 
+            type: 'download', 
+            path: remotePath, 
+            transferred, 
+            total 
+          });
+        });
+
+        readStream.on('error', (err) => { cleanup(); reject(err); });
+        writeStream.on('error', (err) => { cleanup(); reject(err); });
+        writeStream.on('finish', () => { cleanup(); resolve({ success: true }); });
+
+        readStream.pipe(writeStream);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Download to memory (small files only, e.g. for editor)
+ipcMain.handle('sftp-read-file', (event, remotePath) => {
   return new Promise((resolve, reject) => {
     try {
       const sftp = getSftp(event.sender.id);
@@ -840,8 +894,44 @@ ipcMain.handle('sftp-download', (event, remotePath) => {
   });
 });
 
-// Upload file from base64
-ipcMain.handle('sftp-upload', (event, remotePath, b64Content) => {
+// Upload file from local path (streaming with progress)
+ipcMain.handle('sftp-upload', (event, remotePath, localPath) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const sftp = getSftp(event.sender.id);
+      const stats = fs.statSync(localPath);
+      const total = stats.size;
+      let transferred = 0;
+
+      const readStream = fs.createReadStream(localPath);
+      const writeStream = sftp.createWriteStream(remotePath);
+
+      activeTransfers.set(event.sender.id, { readStream, writeStream });
+      const cleanup = () => activeTransfers.delete(event.sender.id);
+
+      readStream.on('data', (chunk) => {
+        transferred += chunk.length;
+        event.sender.send('sftp-progress', { 
+          type: 'upload', 
+          path: remotePath, 
+          transferred, 
+          total 
+        });
+      });
+
+      readStream.on('error', (err) => { cleanup(); reject(err); });
+      writeStream.on('error', (err) => { cleanup(); reject(err); });
+      writeStream.on('close', () => { cleanup(); resolve({ success: true }); });
+
+      readStream.pipe(writeStream);
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+// Upload from memory (small files only, e.g. for editor)
+ipcMain.handle('sftp-write-file', (event, remotePath, b64Content) => {
   return new Promise((resolve, reject) => {
     try {
       const sftp = getSftp(event.sender.id);
@@ -854,6 +944,44 @@ ipcMain.handle('sftp-upload', (event, remotePath, b64Content) => {
       reject(err);
     }
   });
+});
+
+// Save As Dialog
+ipcMain.handle('show-save-dialog', async (event, filename) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: filename,
+    title: 'Download File'
+  });
+  return result;
+});
+
+// Cancel active SFTP transfer
+ipcMain.handle('sftp-cancel', (event) => {
+  const ts = activeTransfers.get(event.sender.id);
+  if (ts) {
+    try { ts.readStream.destroy(); } catch { }
+    try { ts.writeStream.destroy(); } catch { }
+    activeTransfers.delete(event.sender.id);
+    return { success: true };
+  }
+  return { success: false };
+});
+
+// Move local file
+ipcMain.handle('move-local-file', async (event, oldPath, newPath) => {
+  try {
+    fs.renameSync(oldPath, newPath);
+    return { success: true };
+  } catch (err) {
+    // If cross-device move, renameSync might fail, so use copy + unlink
+    try {
+      fs.copyFileSync(oldPath, newPath);
+      fs.unlinkSync(oldPath);
+      return { success: true };
+    } catch (err2) {
+      throw err2;
+    }
+  }
 });
 
 // Delete file
@@ -960,17 +1088,20 @@ ipcMain.handle('sftp-zip', (event, currentDir, remotePaths) => {
           return;
         }
 
-        // Download the tar via SFTP
-        const chunks = [];
+        // Download the tar via SFTP to a local temp file
+        const tempPath = path.join(app.getPath('temp'), archiveName);
+        const writeStream = fs.createWriteStream(tempPath);
         const dl = sftp.createReadStream(archivePath);
-        dl.on('data', chunk => chunks.push(chunk));
-        dl.on('end', () => {
-          const b64 = Buffer.concat(chunks).toString('base64');
+        
+        dl.on('error', reject);
+        writeStream.on('error', reject);
+        writeStream.on('finish', () => {
           // Clean up remote temp archive
           sftp.unlink(archivePath, () => { });
-          resolve({ success: true, data: b64, filename: archiveName });
+          resolve({ success: true, localPath: tempPath, filename: archiveName });
         });
-        dl.on('error', reject);
+        
+        dl.pipe(writeStream);
       });
     });
   });
@@ -1113,10 +1244,12 @@ app.whenReady().then(async () => {
   startRandomScheduler();
 
   // Initial check for updates and start background updater scheduler
-  autoUpdater.checkForUpdates();
-  setInterval(() => {
+  if (autoUpdater) {
     autoUpdater.checkForUpdates();
-  }, 2 * 60 * 60 * 1000);
+    setInterval(() => {
+      autoUpdater.checkForUpdates();
+    }, 2 * 60 * 60 * 1000);
+  }
 
   // Show starting notification
   if (Notification.isSupported()) {

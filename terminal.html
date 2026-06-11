@@ -729,23 +729,53 @@
     /* Progress bar at top for upload */
     #upload-progress {
       display: none;
-      position: fixed;
-      top: 42px;
-      left: 0;
-      right: 0;
-      z-index: 200;
-    }
-
-    #upload-progress.show {
-      display: block;
+      height: 24px;
+      background: #161b22;
+      border-top: 1px solid var(--border);
+      position: relative;
+      flex-shrink: 0;
+      overflow: hidden;
     }
 
     #upload-progress-bar {
-      height: 2px;
-      background: linear-gradient(90deg, var(--accent), var(--teal));
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background: var(--teal);
+      opacity: 0.15;
       width: 0%;
       transition: width 0.2s ease;
-      box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
+    }
+
+    #upload-progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--teal);
+      font-weight: 500;
+      z-index: 2;
+      gap: 10px;
+    }
+
+    #btn-cancel-transfer {
+      margin-left: auto;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      color: var(--red);
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+      z-index: 3;
+    }
+
+    #btn-cancel-transfer:hover {
+      background: var(--red);
+      color: white;
     }
 
     /* Toast notifications */
@@ -1142,18 +1172,21 @@
       <div id="brand">⚡ QuickZack SSH</div>
     </div>
 
-    <!-- Progress Bar -->
-    <div id="upload-progress">
-      <div id="upload-progress-bar"></div>
-    </div>
-
     <!-- Body: Terminal + Explorer -->
     <div id="body">
-
       <!-- Terminal Area -->
       <div id="terminal-wrap"
         style="flex: 1; padding-left: 5px; position:relative; overflow:hidden; display:flex; flex-direction:column;">
         <div id="terminal" style="flex:1; min-height:0;"></div>
+
+        <!-- Progress Bar (Internal to Console Area) -->
+        <div id="upload-progress">
+          <div id="upload-progress-bar"></div>
+          <div id="upload-progress-text">
+            <span id="progress-val">Uploading... 0%</span>
+            <button id="btn-cancel-transfer" title="Stop Transfer">Cancel</button>
+          </div>
+        </div>
         <div id="terminal-status-bar" style="padding: 0; justify-content: space-between;">
           <button id="stat-scroll-left" class="stat-scroll-btn">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1444,6 +1477,8 @@
     const uploadInput = document.getElementById('upload-input');
     const uploadProgress = document.getElementById('upload-progress');
     const uploadProgressBar = document.getElementById('upload-progress-bar');
+    const uploadProgressVal = document.getElementById('progress-val');
+    const btnCancelTransfer = document.getElementById('btn-cancel-transfer');
     const btnToggle = document.getElementById('btn-toggle-explorer');
     const btnHome = document.getElementById('btn-home');
     const btnRefresh = document.getElementById('btn-refresh-files');
@@ -1539,17 +1574,25 @@
 
     updateSyncUI();
 
-    // ── Upload Progress ───────────────────────────────────────────────────────
-    function setProgress(pct) {
+    // ── Content Transfer (Upload/Download) Progress ────────────────────────
+    function setProgress(pct, text) {
+      if (!uploadProgress) return;
+      
+      const isVisible = (pct > 0 && pct < 100);
+      uploadProgress.style.display = isVisible || pct === 100 ? 'block' : 'none';
+      
+      uploadProgressBar.style.width = pct + '%';
+      if (uploadProgressVal) {
+        uploadProgressVal.textContent = text || Math.round(pct) + '%';
+      }
+
       if (pct >= 100) {
-        uploadProgressBar.style.width = '100%';
         setTimeout(() => {
-          uploadProgress.classList.remove('show');
-          uploadProgressBar.style.width = '0%';
-        }, 400);
-      } else {
-        uploadProgress.classList.add('show');
-        uploadProgressBar.style.width = `${pct}%`;
+          if (uploadProgressBar.style.width === '100%') {
+            uploadProgress.style.display = 'none';
+            uploadProgressBar.style.width = '0%';
+          }
+        }, 1500);
       }
     }
 
@@ -1794,24 +1837,17 @@
     // ── Download File ─────────────────────────────────────────────────────────
     async function downloadFile(remotePath, filename) {
       try {
-        setProgress(20);
-        explorerStatus.textContent = `Downloading ${filename}…`;
-        const data = await window.sshBridge.downloadFile(remotePath);
-        setProgress(80);
+        const saveResult = await window.sshBridge.showSaveDialog(filename);
+        if (saveResult.canceled || !saveResult.filePath) return;
 
-        // Convert base64 to blob and download
-        const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
-        const blob = new Blob([bytes]);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
+        explorerStatus.textContent = `Downloading ${filename}…`;
+        setProgress(30);
+
+        await window.sshBridge.downloadToPath(remotePath, saveResult.filePath);
 
         setProgress(100);
         explorerStatus.textContent = `Downloaded: ${filename}`;
-        showToast(`Downloaded ${filename}`, 'success');
+        showToast(`Downloaded to ${saveResult.filePath}`, 'success');
       } catch (err) {
         setProgress(100);
         showToast(`Download failed: ${err.message}`, 'error');
@@ -1822,9 +1858,9 @@
     async function openFileEditor(remotePath, filename) {
       try {
         explorerStatus.textContent = `Loading ${filename}…`;
-        const data = await window.sshBridge.downloadFile(remotePath);
+        const data = await window.sshBridge.readFile(remotePath);
 
-        // Decode base64 to text
+        // Decode base64 to text (handles small files for editor)
         const text = decodeURIComponent(escape(atob(data)));
 
         currentEditFile = { remotePath, filename };
@@ -1873,7 +1909,7 @@
         const b64 = btoa(unescape(encodeURIComponent(text)));
         setProgress(40);
 
-        await window.sshBridge.uploadFile(currentEditFile.remotePath, b64);
+        await window.sshBridge.writeFile(currentEditFile.remotePath, b64);
 
         setProgress(100);
         editorStatusMsg.classList.add('show');
@@ -1916,14 +1952,24 @@
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const remotePath = `${currentPath === '/' ? '' : currentPath}/${file.name}`;
+        const localPath = file.path; // Available in Electron
+
+        if (!localPath) {
+           console.error('File path missing, falling back to buffer (not ideal for large files)');
+           // This shouldn't happen in Electron but added as safety
+           try {
+              const buffer = await file.arrayBuffer();
+              const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+              await window.sshBridge.writeFile(remotePath, b64);
+           } catch (e) { console.error(e); }
+           continue;
+        }
 
         explorerStatus.textContent = `Uploading ${file.name}…`;
 
         try {
-          const buffer = await file.arrayBuffer();
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
           setProgress(Math.round(((i + 0.5) / files.length) * 100));
-          await window.sshBridge.uploadFile(remotePath, b64);
+          await window.sshBridge.uploadFromPath(remotePath, localPath);
           showToast(`Uploaded ${file.name}`, 'success');
         } catch (err) {
           showToast(`Failed to upload ${file.name}: ${err.message}`, 'error');
@@ -1971,8 +2017,25 @@
     btnRefresh.addEventListener('click', () => navigateTo(currentPath));
 
     // ── IPC → xterm ───────────────────────────────────────────────────────────
+    function colorizeKeywords(data) {
+      if (typeof data !== 'string') return data;
+      const redKeys = ['error', 'failed', 'failure', 'critical', 'denied', 'forbidden', 'offline', 'stopped'];
+      const greenKeys = ['success', 'active', 'done', 'complete', 'connected', 'online', 'running', 'ok'];
+      const yellowKeys = ['warning', 'wait', 'pending', 'caution', 'attention'];
+
+      let result = data;
+      const apply = (keys, color) => {
+        const regex = new RegExp(`\\b(${keys.join('|')})\\b`, 'gi');
+        result = result.replace(regex, (m) => `\x1b[1;${color}m${m}\x1b[0m`);
+      };
+      apply(greenKeys, '32');
+      apply(redKeys, '31');
+      apply(yellowKeys, '33');
+      return result;
+    }
+
     window.sshBridge.onData((data) => {
-      terminal.write(data);
+      terminal.write(colorizeKeywords(data));
     });
 
     window.sshBridge.onConnected(async (info) => {
@@ -2045,6 +2108,24 @@
       html += buildBadge('Composer', v.composer, '#a855f7');
       parent.innerHTML = html;
     });
+
+    // ── Real-time SFTP Progress ──────────────────────────────────────────────
+    window.sshBridge.onProgress((data) => {
+      const { type, path, transferred, total } = data;
+      const pct = Math.round((transferred / total) * 100);
+      const filename = path.split('/').pop();
+      const action = type === 'upload' ? 'Uploading' : 'Downloading';
+      const label = `${action} [${filename}]: ${formatSize(transferred)} / ${formatSize(total)} (${pct}%)`;
+      setProgress(pct, label);
+    });
+
+    if (btnCancelTransfer) {
+      btnCancelTransfer.addEventListener('click', async () => {
+        await window.sshBridge.cancelTransfer();
+        showToast('Transfer stopped', 'info');
+        setProgress(100, 'Stopped');
+      });
+    }
 
     // Handle Scroll Buttons
     document.getElementById('stat-scroll-left').addEventListener('click', () => {
@@ -2143,17 +2224,18 @@
         setProgress(30);
 
         const result = await window.sshBridge.zipFiles(currentPath, pathsArray);
-        setProgress(80);
+        setProgress(70);
 
-        // Download the Archive
-        const bytes = Uint8Array.from(atob(result.data), c => c.charCodeAt(0));
-        const blob = new Blob([bytes], { type: 'application/gzip' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = result.filename;
-        a.click();
-        URL.revokeObjectURL(url);
+        // Result.localPath is a temp file. Ask user where to save it.
+        const saveResult = await window.sshBridge.showSaveDialog(result.filename);
+        if (saveResult.canceled || !saveResult.filePath) {
+           setProgress(100);
+           explorerStatus.textContent = 'Archive cancelled';
+           return;
+        }
+
+        setProgress(85);
+        await window.sshBridge.moveLocalFile(result.localPath, saveResult.filePath);
 
         setProgress(100);
         showToast('Downloaded archive successfully', 'success');

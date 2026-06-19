@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickZack – FTP Manager</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    .header h1 { font-size: 18px; color: #58a6ff; }
+    .header .sub { font-size: 12px; color: #8b949e; margin-left: 8px; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .sidebar {
+      width: 280px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+    }
+    .search-box {
+      padding: 12px;
+      border-bottom: 1px solid #30363d;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 13px;
+      outline: none;
+    }
+    .search-box input:focus { border-color: #58a6ff; }
+
+    .ftp-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .ftp-list::-webkit-scrollbar { width: 6px; }
+    .ftp-list::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .ftp-item {
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 4px;
+      transition: background .15s;
+      border: 1px solid transparent;
+    }
+    .ftp-item:hover { background: #21262d; }
+    .ftp-item.active {
+      background: #1f2937;
+      border-color: #58a6ff;
+    }
+    .ftp-item .name { font-size: 14px; font-weight: 600; color: #e6edf3; }
+    .ftp-item .host { font-size: 12px; color: #8b949e; margin-top: 3px; }
+    .ftp-item .badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #238636;
+      color: #fff;
+      margin-left: 6px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #8b949e;
+      font-size: 13px;
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .form-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+    }
+
+    .field-group {
+      margin-bottom: 18px;
+    }
+    .field-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .field-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field-group input:focus { border-color: #58a6ff; }
+
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 42px; }
+    .toggle-pw {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .toggle-pw:hover { color: #c9d1d9; background: #21262d; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      padding: 16px 28px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #21262d;
+      color: #c9d1d9;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background: #30363d; }
+    .btn.primary {
+      background: #238636;
+      border-color: #238636;
+      color: #fff;
+    }
+    .btn.primary:hover { background: #2ea043; }
+    .btn.danger {
+      background: #da3633;
+      border-color: #da3633;
+      color: #fff;
+    }
+    .btn.danger:hover { background: #f85149; }
+    .btn.connect {
+      background: #1f6feb;
+      border-color: #1f6feb;
+      color: #fff;
+    }
+    .btn.connect:hover { background: #388bfd; }
+
+    .status-bar {
+      padding: 8px 20px;
+      font-size: 12px;
+      color: #8b949e;
+      background: #0d1117;
+      border-top: 1px solid #30363d;
+    }
+
+    .divider {
+      height: 1px;
+      background: #30363d;
+      margin: 4px 0 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <span style="font-size: 20px;">&#128640;</span>
+      <strong>QuickZack</strong>
+      <span class="sub">FTP Manager</span>
+    </div>
+    <div style="font-size: 12px; color: #8b949e;">
+      <span id="total-count">0</span> connections saved
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="Search FTP..." />
+      </div>
+      <div class="ftp-list" id="ftpList">
+        <div class="empty-state">No FTP connections saved.<br>Click <strong>New</strong> to add one.</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="form-area">
+        <input type="hidden" id="ftpId" value="" />
+
+        <div class="field-group">
+          <label>Connection Name</label>
+          <input type="text" id="name" placeholder="e.g. Production Server" />
+        </div>
+
+        <div class="field-group">
+          <label>Host</label>
+          <input type="text" id="host" placeholder="e.g. 192.168.1.100 or example.com" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="field-group">
+            <label>Port</label>
+            <input type="number" id="port" value="22" />
+          </div>
+          <div class="field-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="root" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Password</label>
+          <div class="password-wrap">
+            <input type="password" id="password" placeholder="Enter password" />
+            <button type="button" class="toggle-pw" id="togglePw">Show</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>Notes / Description</label>
+          <textarea id="notes" placeholder="e.g. Client A production server, hosted on AWS..." style="width:100%; min-height:72px; padding:10px 12px; border-radius:6px; border:1px solid #30363d; background:#0d1117; color:#c9d1d9; font-size:13px; outline:none; resize:vertical; font-family:inherit;"></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnNew">&#43; New</button>
+        <button class="btn connect" id="btnConnect">&#9658; Connect</button>
+        <button class="btn primary" id="btnSave">&#128190; Save</button>
+        <button class="btn danger" id="btnDelete">&#128465; Delete</button>
+        <div style="flex:1"></div>
+        <button class="btn" id="btnExport">&#11014; Export</button>
+        <button class="btn" id="btnImport">&#11015; Import</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">Ready</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let ftps = [];
+    let selectedId = null;
+
+    async function loadList() {
+      ftps = await window.ftpApi.listFtps();
+      renderList();
+      $('total-count').textContent = ftps.length;
+    }
+
+    function renderList() {
+      const q = $('search').value.trim().toLowerCase();
+      const filtered = ftps.filter(f =>
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.host || '').toLowerCase().includes(q)
+      );
+
+      const list = $('ftpList');
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state">No FTP connections found.</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(f => `
+        <div class="ftp-item ${f.id === selectedId ? 'active' : ''}" data-id="${f.id}">
+          <div class="name">${escapeHtml(f.name || 'Untitled')} ${f.id === selectedId ? '<span class="badge">Selected</span>' : ''}</div>
+          <div class="host">${escapeHtml(f.username || '')}@${escapeHtml(f.host || '')}:${f.port || 22}</div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.ftp-item').forEach(el => {
+        el.addEventListener('click', () => {
+          selectedId = el.dataset.id;
+          renderList();
+          populateForm(ftps.find(f => f.id === selectedId));
+        });
+      });
+    }
+
+    function populateForm(ftp) {
+      if (!ftp) return clearForm();
+      $('ftpId').value = ftp.id || '';
+      $('name').value = ftp.name || '';
+      $('host').value = ftp.host || '';
+      $('port').value = ftp.port || 22;
+      $('username').value = ftp.username || '';
+      $('password').value = ftp.password || '';
+      $('notes').value = ftp.notes || '';
+      setStatus('Editing: ' + (ftp.name || ftp.host));
+    }
+
+    function clearForm() {
+      $('ftpId').value = '';
+      $('name').value = '';
+      $('host').value = '';
+      $('port').value = '22';
+      $('username').value = '';
+      $('password').value = '';
+      $('notes').value = '';
+      selectedId = null;
+      renderList();
+      setStatus('Ready');
+    }
+
+    function readForm() {
+      return {
+        id: $('ftpId').value || null,
+        name: $('name').value.trim(),
+        host: $('host').value.trim(),
+        port: parseInt($('port').value, 10) || 22,
+        username: $('username').value.trim(),
+        password: $('password').value,
+        notes: $('notes').value.trim()
+      };
+    }
+
+    function setStatus(msg) {
+      $('statusBar').textContent = msg;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    $('search').addEventListener('input', renderList);
+
+    $('togglePw').addEventListener('click', () => {
+      const pw = $('password');
+      if (pw.type === 'password') {
+        pw.type = 'text';
+        $('togglePw').textContent = 'Hide';
+      } else {
+        pw.type = 'password';
+        $('togglePw').textContent = 'Show';
+      }
+    });
+
+    $('btnNew').addEventListener('click', () => {
+      clearForm();
+      $('name').focus();
+      setStatus('Creating new connection');
+    });
+
+    $('btnSave').addEventListener('click', async () => {
+      const ftp = readForm();
+      if (!ftp.name || !ftp.host) {
+        setStatus('Error: Name and Host are required');
+        return;
+      }
+      const saved = await window.ftpApi.saveFtp(ftp);
+      setStatus('Saved: ' + saved.name);
+      await loadList();
+      selectedId = saved.id;
+      renderList();
+      populateForm(ftps.find(f => f.id === saved.id));
+    });
+
+    $('btnDelete').addEventListener('click', async () => {
+      const id = $('ftpId').value;
+      if (!id) {
+        setStatus('No connection selected to delete');
+        return;
+      }
+      if (!confirm('Delete this FTP connection?')) return;
+      await window.ftpApi.deleteFtp(id);
+      setStatus('Deleted');
+      clearForm();
+      await loadList();
+    });
+
+    $('btnConnect').addEventListener('click', async () => {
+      const ftp = readForm();
+      if (!ftp.host || !ftp.username) {
+        setStatus('Error: Host and Username are required to connect');
+        return;
+      }
+      setStatus('Connecting to ' + ftp.host + '...');
+      await window.ftpApi.connectFtp(ftp);
+      setStatus('Terminal opened for ' + ftp.host);
+    });
+
+    $('btnExport').addEventListener('click', async () => {
+      const result = await window.ftpApi.exportFtps();
+      if (result.success) {
+        setStatus('Exported to ' + result.path);
+      } else {
+        setStatus('Export cancelled');
+      }
+    });
+
+    $('btnImport').addEventListener('click', async () => {
+      const result = await window.ftpApi.importFtps();
+      if (result.success) {
+        setStatus('Imported ' + result.count + ' connections');
+        await loadList();
+      } else {
+        setStatus('Import cancelled');
+      }
+    });
+
+    loadList();
+  </script>
+</body>
+</html>

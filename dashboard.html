@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickZack – Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-left .logo { font-size: 24px; }
+    .header-left h1 { font-size: 18px; color: #e6edf3; }
+    .header-left .sub { font-size: 12px; color: #8b949e; margin-left: 4px; }
+    .header-right { font-size: 12px; color: #8b949e; }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .content::-webkit-scrollbar { width: 6px; }
+    .content::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 22px 18px;
+      cursor: pointer;
+      transition: all .15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      user-select: none;
+    }
+    .card:hover {
+      border-color: #58a6ff;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    }
+    .card .icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: #0d1117;
+      border: 1px solid #21262d;
+    }
+    .card .title { font-size: 15px; font-weight: 600; color: #e6edf3; margin-bottom: 4px; }
+    .card .desc { font-size: 12px; color: #8b949e; line-height: 1.4; }
+    .card .badge {
+      margin-top: 8px;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: #238636;
+      color: #fff;
+      font-weight: 600;
+    }
+    .card .badge.soon { background: #30363d; color: #8b949e; }
+
+    .footer {
+      padding: 10px 24px;
+      font-size: 11px;
+      color: #484f58;
+      text-align: center;
+      border-top: 1px solid #30363d;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">&#128640;</span>
+      <h1>QuickZack</h1>
+      <span class="sub">Developer Dashboard</span>
+    </div>
+    <div class="header-right">v1.4.5</div>
+  </div>
+
+  <div class="content">
+    <div class="grid">
+      <div class="card" data-module="projects">
+        <div class="icon">&#128187;</div>
+        <div class="title">Projects</div>
+        <div class="desc">Open the launcher to browse and open your local projects</div>
+        <div class="badge">Ready</div>
+      </div>
+
+      <div class="card" data-module="ftps">
+        <div class="icon">&#128225;</div>
+        <div class="title">FTP Manager</div>
+        <div class="desc">Save, edit, and connect to your remote SFTP / SSH servers</div>
+        <div class="badge">Ready</div>
+      </div>
+
+      <div class="card" data-module="utilities">
+        <div class="icon">&#9881;</div>
+        <div class="title">Quick Utilities</div>
+        <div class="desc">Base64, URL, JSON, Hash, JWT decoder — all in one place</div>
+        <div class="badge">Ready</div>
+      </div>
+
+      <div class="card" data-module="databases">
+        <div class="icon">&#128011;</div>
+        <div class="title">Databases</div>
+        <div class="desc">Connect via SSH tunnel to MySQL, PostgreSQL, and SQLite</div>
+        <div class="badge soon">Soon</div>
+      </div>
+
+      <div class="card" data-module="notes">
+        <div class="icon">&#128221;</div>
+        <div class="title">Notes & Snippets</div>
+        <div class="desc">Save frequently used commands, queries, and code snippets</div>
+        <div class="badge">Ready</div>
+      </div>
+
+      <div class="card" data-module="settings">
+        <div class="icon">&#9881;</div>
+        <div class="title">Settings</div>
+        <div class="desc">Edit config.json, change shortcuts, and customize preferences</div>
+        <div class="badge">Ready</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Press Alt+Space to open the Project Launcher</div>
+
+  <script>
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => {
+        const mod = card.dataset.module;
+        if (!mod) return;
+        window.dashApi.openModule(mod);
+      });
+    });
+  </script>
+</body>
+</html>

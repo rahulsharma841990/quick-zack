@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickZack – Notes &amp; Snippets</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-left .logo { font-size: 20px; }
+    .header-left h1 { font-size: 16px; color: #e6edf3; }
+    .header-left .sub { font-size: 11px; color: #8b949e; margin-left: 6px; }
+    .header-right { display: flex; gap: 6px; align-items: center; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .sidebar {
+      width: 260px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .search-box {
+      padding: 10px 12px;
+      border-bottom: 1px solid #30363d;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 7px 11px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 13px;
+      outline: none;
+    }
+    .search-box input:focus { border-color: #58a6ff; }
+
+    .note-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .note-list::-webkit-scrollbar { width: 5px; }
+    .note-list::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .note-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 4px;
+      transition: background .12s;
+      border: 1px solid transparent;
+    }
+    .note-item:hover { background: #21262d; }
+    .note-item.active {
+      background: #1f2937;
+      border-color: #58a6ff;
+    }
+    .note-item .title { font-size: 13px; font-weight: 600; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .note-item .preview { font-size: 11px; color: #8b949e; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .note-item .meta { font-size: 10px; color: #484f58; margin-top: 4px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 16px;
+      color: #8b949e;
+      font-size: 12px;
+    }
+
+    .editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .editor-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: #0d1117;
+      flex-shrink: 0;
+    }
+    .editor-header input.title-input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #e6edf3;
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+    }
+    .editor-header input.title-input:focus { border-color: #58a6ff; }
+    .editor-header input.tags-input {
+      width: 220px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 13px;
+      outline: none;
+    }
+    .editor-header input.tags-input:focus { border-color: #58a6ff; }
+    .editor-header input::placeholder { color: #484f58; }
+
+    .editor-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .editor-body textarea {
+      flex: 1;
+      width: 100%;
+      padding: 14px 18px;
+      border: none;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 14px;
+      line-height: 1.7;
+      outline: none;
+      resize: none;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      padding: 10px 18px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      flex-shrink: 0;
+      align-items: center;
+    }
+    .btn {
+      padding: 7px 13px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #21262d;
+      color: #c9d1d9;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .12s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn:hover { background: #30363d; }
+    .btn.primary { background: #238636; border-color: #238636; color: #fff; }
+    .btn.primary:hover { background: #2ea043; }
+    .btn.danger { background: #da3633; border-color: #da3633; color: #fff; }
+    .btn.danger:hover { background: #f85149; }
+    .btn.secondary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    .btn.secondary:hover { background: #388bfd; }
+
+    .status { margin-left: auto; font-size: 12px; color: #8b949e; }
+
+    .tag-chip {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: #1f6feb;
+      color: #fff;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">&#128640;</span>
+      <h1>QuickZack</h1>
+      <span class="sub">Notes &amp; Snippets</span>
+    </div>
+    <div class="header-right">
+      <span id="totalCount">0</span> notes
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="search-box">
+        <input type="text" id="search" placeholder="Search notes..." />
+      </div>
+      <div class="note-list" id="noteList">
+        <div class="empty-state">No notes yet.<br>Click <strong>New</strong> to create one.</div>
+      </div>
+    </div>
+
+    <div class="editor" id="editor">
+      <div class="editor-header">
+        <input type="text" class="title-input" id="noteTitle" placeholder="Note title..." />
+        <input type="text" class="tags-input" id="noteTags" placeholder="tags, comma, separated" />
+      </div>
+      <div class="editor-body">
+        <textarea id="noteContent" placeholder="Start typing your note, snippet, or idea here..."></textarea>
+      </div>
+      <div class="toolbar">
+        <button class="btn primary" id="btnNew">+ New</button>
+        <button class="btn secondary" id="btnSave">Save</button>
+        <button class="btn danger" id="btnDelete">Delete</button>
+        <span class="status" id="status">Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let notes = [];
+    let selectedId = null;
+
+    async function loadNotes() {
+      notes = await window.notesApi.listNotes();
+      renderList();
+      $('totalCount').textContent = notes.length;
+    }
+
+    function renderList() {
+      const q = $('search').value.trim().toLowerCase();
+      const filtered = q
+        ? notes.filter(n =>
+            (n.title || '').toLowerCase().includes(q) ||
+            (n.content || '').toLowerCase().includes(q) ||
+            (n.tags || []).some(t => t.toLowerCase().includes(q))
+          )
+        : notes;
+
+      const list = $('noteList');
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state">No notes found.</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(n => {
+        const date = n.updatedAt ? new Date(n.updatedAt).toLocaleDateString() : '';
+        const tagHtml = (n.tags || []).slice(0, 3).map(t => '<span class="tag-chip">' + escapeHtml(t) + '</span>').join('');
+        return `
+          <div class="note-item ${n.id === selectedId ? 'active' : ''}" data-id="${n.id}">
+            <div class="title">${escapeHtml(n.title || 'Untitled')}</div>
+            <div class="preview">${escapeHtml(truncate(n.content || '', 42))}</div>
+            <div class="meta">${tagHtml} ${date}</div>
+          </div>
+        `;
+      }).join('');
+
+      list.querySelectorAll('.note-item').forEach(el => {
+        el.addEventListener('click', () => {
+          selectedId = el.dataset.id;
+          renderList();
+          populateEditor(notes.find(n => n.id === selectedId));
+        });
+      });
+    }
+
+    function populateEditor(note) {
+      if (!note) return clearEditor();
+      $('noteTitle').value = note.title || '';
+      $('noteContent').value = note.content || '';
+      $('noteTags').value = (note.tags || []).join(', ');
+      setStatus('Editing: ' + (note.title || 'Untitled'));
+    }
+
+    function clearEditor() {
+      $('noteTitle').value = '';
+      $('noteContent').value = '';
+      $('noteTags').value = '';
+      selectedId = null;
+      renderList();
+      setStatus('Ready');
+    }
+
+    function readEditor() {
+      return {
+        id: selectedId || null,
+        title: $('noteTitle').value.trim(),
+        content: $('noteContent').value,
+        tags: $('noteTags').value.split(',').map(t => t.trim()).filter(Boolean)
+      };
+    }
+
+    function setStatus(msg) { $('status').textContent = msg; }
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+    function truncate(str, n) { return str.length > n ? str.slice(0, n) + '...' : str; }
+
+    $('search').addEventListener('input', renderList);
+
+    $('btnNew').addEventListener('click', () => {
+      clearEditor();
+      $('noteTitle').focus();
+      setStatus('Creating new note');
+    });
+
+    $('btnSave').addEventListener('click', async () => {
+      const note = readEditor();
+      if (!note.title && !note.content) {
+        setStatus('Error: Title or content required');
+        return;
+      }
+      const saved = await window.notesApi.saveNote(note);
+      setStatus('Saved: ' + (saved.title || 'Untitled'));
+      await loadNotes();
+      selectedId = saved.id;
+      renderList();
+    });
+
+    $('btnDelete').addEventListener('click', async () => {
+      if (!selectedId) {
+        setStatus('No note selected to delete');
+        return;
+      }
+      if (!confirm('Delete this note?')) return;
+      await window.notesApi.deleteNote(selectedId);
+      setStatus('Deleted');
+      clearEditor();
+      await loadNotes();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        $('btnSave').click();
+      }
+    });
+
+    loadNotes();
+  </script>
+</body>
+</html>

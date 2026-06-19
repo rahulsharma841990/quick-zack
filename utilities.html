@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickZack – Quick Utilities</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 20px;
+    }
+    h1 { font-size: 18px; color: #58a6ff; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #161b22;
+      color: #8b949e;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tab.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    label { font-size: 12px; color: #8b949e; display: block; margin-bottom: 6px; font-weight: 600; }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 13px;
+      outline: none;
+      font-family: monospace;
+      margin-bottom: 10px;
+      resize: vertical;
+    }
+    textarea:focus, input:focus { border-color: #58a6ff; }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: none;
+      background: #238636;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .btn.secondary { background: #30363d; }
+    .btn:hover { opacity: 0.9; }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      font-family: monospace;
+      font-size: 12px;
+      color: #3fb950;
+      word-break: break-all;
+      min-height: 36px;
+    }
+  </style>
+</head>
+<body>
+  <h1>&#9881; Quick Utilities</h1>
+  <div class="tabs">
+    <div class="tab active" data-tab="base64">Base64</div>
+    <div class="tab" data-tab="url">URL</div>
+    <div class="tab" data-tab="json">JSON</div>
+    <div class="tab" data-tab="hash">Hash</div>
+    <div class="tab" data-tab="jwt">JWT</div>
+  </div>
+
+  <div class="panel active" id="panel-base64">
+    <label>Input</label>
+    <textarea id="b64-in" rows="4" placeholder="Type something..."></textarea>
+    <button class="btn" onclick="doB64('encode')">Encode</button>
+    <button class="btn secondary" onclick="doB64('decode')">Decode</button>
+    <div class="result" id="b64-out"></div>
+  </div>
+
+  <div class="panel" id="panel-url">
+    <label>Input</label>
+    <textarea id="url-in" rows="4" placeholder="Type something..."></textarea>
+    <button class="btn" onclick="doUrl('encode')">Encode</button>
+    <button class="btn secondary" onclick="doUrl('decode')">Decode</button>
+    <div class="result" id="url-out"></div>
+  </div>
+
+  <div class="panel" id="panel-json">
+    <label>Input (JSON)</label>
+    <textarea id="json-in" rows="6" placeholder='{"key": "value"}'></textarea>
+    <button class="btn" onclick="doJson()">Format / Validate</button>
+    <button class="btn secondary" onclick="doJsonMinify()">Minify</button>
+    <div class="result" id="json-out"></div>
+  </div>
+
+  <div class="panel" id="panel-hash">
+    <label>Input</label>
+    <input type="text" id="hash-in" placeholder="Type something..." />
+    <button class="btn" onclick="doHash()">Generate</button>
+    <div class="result" id="hash-out"></div>
+  </div>
+
+  <div class="panel" id="panel-jwt">
+    <label>JWT Token</label>
+    <textarea id="jwt-in" rows="4" placeholder="Paste JWT token..."></textarea>
+    <button class="btn" onclick="doJwt()">Decode</button>
+    <div class="result" id="jwt-out"></div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+      });
+    });
+
+    function set(id, text) { document.getElementById(id).textContent = text; }
+
+    function doB64(mode) {
+      const v = document.getElementById('b64-in').value;
+      try {
+        set('b64-out', mode === 'encode' ? btoa(v) : atob(v));
+      } catch (e) { set('b64-out', 'Error: ' + e.message); }
+    }
+
+    function doUrl(mode) {
+      const v = document.getElementById('url-in').value;
+      set('url-out', mode === 'encode' ? encodeURIComponent(v) : decodeURIComponent(v));
+    }
+
+    function doJson() {
+      try {
+        const obj = JSON.parse(document.getElementById('json-in').value);
+        set('json-out', JSON.stringify(obj, null, 2));
+      } catch (e) { set('json-out', 'Invalid JSON: ' + e.message); }
+    }
+
+    function doJsonMinify() {
+      try {
+        const obj = JSON.parse(document.getElementById('json-in').value);
+        set('json-out', JSON.stringify(obj));
+      } catch (e) { set('json-out', 'Invalid JSON: ' + e.message); }
+    }
+
+    async function doHash() {
+      const v = document.getElementById('hash-in').value;
+      const enc = new TextEncoder().encode(v);
+      const md5 = await crypto.subtle.digest('SHA-256', enc).then(b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''));
+      set('hash-out', 'SHA-256: ' + md5);
+    }
+
+    function doJwt() {
+      try {
+        const t = document.getElementById('jwt-in').value.trim().split('.');
+        if (t.length !== 3) { set('jwt-out', 'Not a valid JWT'); return; }
+        const header = JSON.parse(atob(t[0].replace(/-/g,'+').replace(/_/g,'/')));
+        const payload = JSON.parse(atob(t[1].replace(/-/g,'+').replace(/_/g,'/')));
+        set('jwt-out', 'Header:\n' + JSON.stringify(header, null, 2) + '\n\nPayload:\n' + JSON.stringify(payload, null, 2));
+      } catch (e) { set('jwt-out', 'Error: ' + e.message); }
+    }
+  </script>
+</body>
+</html>
